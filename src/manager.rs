@@ -8,6 +8,8 @@ use wasm_bindgen::JsCast;
 
 use wasmuri_events::*;
 
+use wasmuri_text::TextRenderer;
+
 use web_sys::{
     HtmlElement,
     HtmlCanvasElement,
@@ -27,8 +29,12 @@ pub struct ContainerManager {
     canvas: HtmlCanvasElement,
     prev_cursor: Option<Cursor>,
     gl: WebGlRenderingContext,
+
+    mouse_position: (i32,i32),
     
-    current_container: Option<Rc<RefCell<dyn Container>>>
+    current_container: Option<Rc<RefCell<dyn Container>>>,
+
+    text_renderer: TextRenderer<'static>
 }
 
 impl ContainerManager {
@@ -44,7 +50,13 @@ impl ContainerManager {
             canvas,
             prev_cursor: None,
             gl,
-            current_container: None
+
+            // I'm afraid I can't retrieve the mouse position until the mouse moves for the first time
+            mouse_position: (0, 0),
+
+            current_container: None,
+
+            text_renderer: TextRenderer::from_canvas(&html_canvas)
         };
 
         let manager_cell = Rc::new(RefCell::new(manager));
@@ -69,6 +81,30 @@ impl ContainerManager {
             Some(mut action) => action.execute(self),
             None => {}
         }
+    }
+
+    /// Gives an immutable reference to the (only) TextRenderer of this ContainerManager
+    pub fn get_text_renderer(&self) -> &TextRenderer<'static> {
+        &self.text_renderer
+    }
+
+    /// Gives a mutable reference to the (only) TextRenderer of this ContainerManager
+    pub fn get_mut_text_renderer(&mut self) -> &mut TextRenderer<'static> {
+        &mut self.text_renderer
+    }
+
+    /// Gives the current mouse position in the OpenGL coordinate system. If a MouseMoveEvent is currently being fired,
+    /// this method will return the previous mouse coordinates.
+    pub fn get_mouse_position(&self) -> (f32, f32) {
+        self.to_gl_coords(self.mouse_position)
+    }
+
+    /// Converts the position in pixel coordinates (the offset in pixels between the point and the corner of the canvas) to
+    /// OpenGL coordinates.
+    pub fn to_gl_coords(&self, pixel_coords: (i32, i32)) -> (f32, f32) {
+        let gl_x = 2.0 * (pixel_coords.0 as f32 / self.canvas.width() as f32) - 1.0;
+        let gl_y = 1.0 - 2.0 * (pixel_coords.1 as f32 / self.canvas.height() as f32);
+        (gl_x, gl_y)
     }
 }
 
@@ -119,6 +155,7 @@ impl Listener<MouseClickEvent> for ContainerManager {
 impl Listener<MouseMoveEvent> for ContainerManager {
 
     fn process(&mut self, event: &MouseMoveEvent){
+
         self.process_result(match &self.current_container {
             Some(current_container) => {
 
@@ -126,6 +163,9 @@ impl Listener<MouseMoveEvent> for ContainerManager {
                 claim_container.on_mouse_move(event)
             }, None => None
         });
+
+        // Unfortunately, offset_x and offset_y are experimental, but there is no alternative that I know of.
+        self.mouse_position = (event.mouse_event.offset_x(), event.mouse_event.offset_y());
     }
 }
 

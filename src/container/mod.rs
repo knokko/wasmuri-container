@@ -13,6 +13,12 @@ use wasmuri_events::{
 
 use web_sys::WebGlRenderingContext;
 
+mod flat;
+
+pub mod layer;
+
+pub use flat::*;
+
 pub trait Container {
     
     fn on_key_down(&mut self, event: &KeyDownEvent) -> EventResult;
