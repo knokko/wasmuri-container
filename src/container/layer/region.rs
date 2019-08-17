@@ -25,20 +25,3 @@ impl Region {
         point.0 > self.min_x && point.0 < self.max_x && point.1 > self.min_y && point.1 < self.max_y
     }
 }
-
-pub struct ClaimedRegion<T> {
-
-    region: Region,
-    claimer: T
-}
-
-impl<T> ClaimedRegion<T> {
-
-    pub fn get_region(&self) -> &Region {
-        &self.region
-    }
-
-    pub fn get_claimer(&self) -> &T {
-        &self.claimer
-    }
-}

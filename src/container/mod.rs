@@ -1,6 +1,7 @@
 use crate::{
     EventResult,
-    RenderResult
+    RenderResult,
+    ContainerManager
 };
 
 use wasmuri_events::{
@@ -8,7 +9,9 @@ use wasmuri_events::{
     KeyUpEvent,
     MouseClickEvent,
     MouseMoveEvent,
-    MouseScrollEvent
+    MouseScrollEvent,
+    RenderEvent,
+    UpdateEvent
 };
 
 use web_sys::WebGlRenderingContext;
@@ -21,17 +24,17 @@ pub use flat::*;
 
 pub trait Container {
     
-    fn on_key_down(&mut self, event: &KeyDownEvent) -> EventResult;
+    fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> EventResult;
 
-    fn on_key_up(&mut self, event: &KeyUpEvent) -> EventResult;
+    fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> EventResult;
 
-    fn on_mouse_click(&mut self, event: &MouseClickEvent) -> EventResult;
+    fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> EventResult;
 
-    fn on_mouse_move(&mut self, event: &MouseMoveEvent) -> EventResult;
+    fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) -> EventResult;
 
-    fn on_mouse_scroll(&mut self, event: &MouseScrollEvent) -> EventResult;
+    fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> EventResult;
 
-    fn on_update(&mut self) -> EventResult;
+    fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult;
 
-    fn render(&self, gl: &WebGlRenderingContext) -> RenderResult;
+    fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult;
 }

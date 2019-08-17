@@ -44,6 +44,7 @@ impl ContainerManager {
         let gl = canvas.get_context("webgl").expect("Should have get_context method").expect("Should be able to get webgl context").dyn_into::<WebGlRenderingContext>().expect("webgl context should be a WebGlRenderingContext");
 
         let html_canvas = canvas.clone();
+        let text_renderer = TextRenderer::from_canvas(&html_canvas);
         set_event_source(&html_canvas.dyn_into::<HtmlElement>().expect("A canvas should be an HtmlElement"));
 
         let manager = ContainerManager {
@@ -56,7 +57,7 @@ impl ContainerManager {
 
             current_container: None,
 
-            text_renderer: TextRenderer::from_canvas(&html_canvas)
+            text_renderer
         };
 
         let manager_cell = Rc::new(RefCell::new(manager));
@@ -120,7 +121,7 @@ impl Listener<KeyDownEvent> for ContainerManager {
             Some(current_container) => {
 
                 let mut claim_container = current_container.borrow_mut();
-                claim_container.on_key_down(event)
+                claim_container.on_key_down(event, self)
             }, None => None
         });
     }
@@ -133,7 +134,7 @@ impl Listener<KeyUpEvent> for ContainerManager {
             Some(current_container) => {
 
                 let mut claim_container = current_container.borrow_mut();
-                claim_container.on_key_up(event)
+                claim_container.on_key_up(event, self)
             }, None => None
         });
     }
@@ -146,7 +147,7 @@ impl Listener<MouseClickEvent> for ContainerManager {
             Some(current_container) => {
 
                 let mut claim_container = current_container.borrow_mut();
-                claim_container.on_mouse_click(event)
+                claim_container.on_mouse_click(event, self)
             }, None => None
         });
     }
@@ -160,7 +161,7 @@ impl Listener<MouseMoveEvent> for ContainerManager {
             Some(current_container) => {
 
                 let mut claim_container = current_container.borrow_mut();
-                claim_container.on_mouse_move(event)
+                claim_container.on_mouse_move(event, self)
             }, None => None
         });
 
@@ -176,7 +177,7 @@ impl Listener<MouseScrollEvent> for ContainerManager {
             Some(current_container) => {
 
                 let mut claim_container = current_container.borrow_mut();
-                claim_container.on_mouse_scroll(event)
+                claim_container.on_mouse_scroll(event, self)
             }, None => None
         });
     }
@@ -184,12 +185,12 @@ impl Listener<MouseScrollEvent> for ContainerManager {
 
 impl Listener<UpdateEvent> for ContainerManager {
 
-    fn process(&mut self, _event: &UpdateEvent){
+    fn process(&mut self, event: &UpdateEvent){
         self.process_result(match &self.current_container {
             Some(current_container) => {
 
                 let mut claim_container = current_container.borrow_mut();
-                claim_container.on_update()
+                claim_container.on_update(event, self)
             }, None => None
         });
     }
@@ -197,12 +198,12 @@ impl Listener<UpdateEvent> for ContainerManager {
 
 impl Listener<RenderEvent> for ContainerManager {
 
-    fn process(&mut self, _event: &RenderEvent){
+    fn process(&mut self, event: &RenderEvent){
         match &self.current_container {
             Some(current_container) => {
 
-                let claim_container = current_container.borrow();
-                let result = claim_container.render(&self.gl);
+                let mut claim_container = current_container.borrow_mut();
+                let result = claim_container.render(&self.gl, event, self);
 
                 let change_cursor;
                 if self.prev_cursor.is_none() {
@@ -221,3 +222,5 @@ impl Listener<RenderEvent> for ContainerManager {
         }
     }
 }
+
+// TODO Also create a resize event in wasmuri-events and listen for it

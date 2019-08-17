@@ -10,9 +10,8 @@ use web_sys::WebGlRenderingContext;
 pub trait Component {
 
     fn attach(&mut self, agent: &mut LayerAgent);
-}
 
-pub trait RenderingComponent {
-
-    fn render(&mut self, gl: &WebGlRenderingContext, agent: &mut RenderAgent, event: &RenderEvent) -> Option<Cursor>;
+    fn render(&mut self, _gl: &WebGlRenderingContext, _agent: &mut RenderAgent, _event: &RenderEvent) -> Option<Cursor> {
+        panic!("The render operation is not supported for this component!");
+    }
 }

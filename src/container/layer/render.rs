@@ -1,5 +1,7 @@
-use crate::component::RenderingComponent;
-use crate::ContainerManager;
+use crate::{
+    Component,
+    ContainerManager
+};
 use crate::cursor::Cursor;
 
 use std::cell::RefCell;
@@ -26,7 +28,7 @@ pub enum RenderTrigger {
 
 struct RenderHandle {
     
-    component: Weak<RefCell<Box<dyn RenderingComponent>>>,
+    component: Weak<RefCell<Box<dyn Component>>>,
 
     region: Region,
 
@@ -36,7 +38,7 @@ struct RenderHandle {
 
 impl RenderHandle {
     
-    fn new(component: Weak<RefCell<Box<dyn RenderingComponent>>>, region: Region, trigger: RenderTrigger) -> RenderHandle {
+    fn new(component: Weak<RefCell<Box<dyn Component>>>, region: Region, trigger: RenderTrigger) -> RenderHandle {
         RenderHandle {
             component,
             region,
@@ -48,7 +50,7 @@ impl RenderHandle {
     }
 
     fn should_render(&self) -> bool {
-        match self.trigger {
+        match &self.trigger {
             RenderTrigger::Always => true,
             _others => self.needs_render
         }
@@ -57,6 +59,7 @@ impl RenderHandle {
     fn render<'a>(&'a mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager) -> (RenderAgent<'a>,Option<Cursor>) {
         match self.component.upgrade() {
             Some(component_cell) => {
+
                 let mut component_box = component_cell.borrow_mut();
                 let mut agent = RenderAgent::new(&self.region, manager);
 
@@ -69,7 +72,7 @@ impl RenderHandle {
             }, None => {
 
                 // Remove the component from the list
-                let agent = RenderAgent::new(&self.region, manager);
+                let mut agent = RenderAgent::new(&self.region, manager);
                 agent.remove_this_component();
                 (agent, None)
             }
@@ -90,43 +93,65 @@ impl RenderManager {
         }
     }
 
-    pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager) -> Option<Cursor> {
+    /// Should only be called after can_claim confirms that the region can be claimed!
+    pub fn claim_space(&mut self, region: Region, trigger: RenderTrigger, component: Weak<RefCell<Box<dyn Component>>>) {
+
+        self.render_components.push(RenderHandle::new(component, region, trigger));
+    }
+
+    pub fn can_claim(&self, region: Region) -> bool {
+
+        for handle in &self.render_components {
+            if handle.region.intersects_with(&region) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager) -> (Option<Cursor>,Vec<Box<dyn Component>>) {
         let mut cursor_result = None;
 
         let mut components_to_add = Vec::new();
 
         let mouse_position = manager.get_mouse_position();
         self.render_components.drain_filter(|handle| {
-            let render_result = handle.render(gl, event, manager);
+            if handle.should_render() {
+                let render_result = handle.render(gl, event, manager);
+                let mut result_agent = render_result.0;
+                let result_cursor = render_result.1;
 
-            // If the mouse is hovering over the element, that element will determine the cursor
-            if handle.region.is_inside(mouse_position) {
-                cursor_result = render_result.1;
+                let requested_removal = result_agent.did_request_removal();
+
+                components_to_add.append(result_agent.get_components_to_add());
+
+                if result_agent.did_request_render() {
+                    handle.needs_render = true;
+                }
+
+                // If the mouse is hovering over the element, that element will determine the cursor
+                if handle.region.is_inside(mouse_position) {
+                    cursor_result = result_cursor;
+                }
+                // TODO Remove all components in the components_to_remove
+
+                // Only drain the elements that didn't request removal
+                requested_removal
+            } else {
+                false
             }
-
-            let agent_result = render_result.0;
-            if agent_result.did_request_render() {
-                handle.needs_render = true;
-            }
-
-            components_to_add.append(agent_result.get_components_to_add());
-            // TODO Remove all components in the components_to_remove
-
-            // Only drain the elements that didn't request removal
-            agent_result.did_request_removal()
         });
 
-        // TODO Add all components from components_to_add
-
-        cursor_result
+        (cursor_result, components_to_add)
     }
 
     pub fn on_mouse_move<'a>(&'a mut self, event: &MouseMoveEvent, manager: &'a ContainerManager){
 
         let old_mouse_pos = manager.get_mouse_position();
         let new_mouse_pos = manager.to_gl_coords((event.mouse_event.offset_x(), event.mouse_event.offset_y()));
-        for handle in self.render_components {
-            match handle.trigger {
+        for handle in &mut self.render_components {
+            match &mut handle.trigger {
                 RenderTrigger::MouseMove => handle.needs_render = true,
                 RenderTrigger::MouseMoveInside => {
                     let was_in = handle.region.is_inside(old_mouse_pos);
