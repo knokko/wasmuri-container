@@ -34,7 +34,7 @@ pub struct ContainerManager {
     
     current_container: Option<Rc<RefCell<dyn Container>>>,
 
-    text_renderer: TextRenderer<'static>
+    text_renderer: RefCell<TextRenderer<'static>>
 }
 
 impl ContainerManager {
@@ -44,7 +44,7 @@ impl ContainerManager {
         let gl = canvas.get_context("webgl").expect("Should have get_context method").expect("Should be able to get webgl context").dyn_into::<WebGlRenderingContext>().expect("webgl context should be a WebGlRenderingContext");
 
         let html_canvas = canvas.clone();
-        let text_renderer = TextRenderer::from_canvas(&html_canvas);
+        let text_renderer = RefCell::new(TextRenderer::from_canvas(&html_canvas));
         set_event_source(&html_canvas.dyn_into::<HtmlElement>().expect("A canvas should be an HtmlElement"));
 
         let manager = ContainerManager {
@@ -84,14 +84,9 @@ impl ContainerManager {
         }
     }
 
-    /// Gives an immutable reference to the (only) TextRenderer of this ContainerManager
-    pub fn get_text_renderer(&self) -> &TextRenderer<'static> {
+    /// Gives a reference to the TextRenderer of this ContainerManager, which is inside a RefCell.
+    pub fn get_text_renderer(&self) -> &RefCell<TextRenderer<'static>> {
         &self.text_renderer
-    }
-
-    /// Gives a mutable reference to the (only) TextRenderer of this ContainerManager
-    pub fn get_mut_text_renderer(&mut self) -> &mut TextRenderer<'static> {
-        &mut self.text_renderer
     }
 
     /// Gives the current mouse position in the OpenGL coordinate system. If a MouseMoveEvent is currently being fired,

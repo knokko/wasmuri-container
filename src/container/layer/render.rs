@@ -10,6 +10,7 @@ use std::rc::Weak;
 use super::Region;
 use super::agent::RenderAgent;
 
+use wasmuri_core::util::color::Color;
 use wasmuri_events::{
     MouseMoveEvent,
     RenderEvent
@@ -82,14 +83,19 @@ impl RenderHandle {
 
 pub struct RenderManager {
 
-    render_components: Vec<RenderHandle>
+    render_components: Vec<RenderHandle>,
+
+    background_color: Option<Color>,
+    render_background: bool
 }
 
 impl RenderManager {
 
-    pub fn new() -> RenderManager {
+    pub fn new(background_color: Option<Color>) -> RenderManager {
         RenderManager {
-            render_components: Vec::with_capacity(10)
+            render_components: Vec::with_capacity(10),
+            background_color,
+            render_background: true
         }
     }
 
@@ -111,6 +117,17 @@ impl RenderManager {
     }
 
     pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager) -> (Option<Cursor>,Vec<Box<dyn Component>>) {
+
+        // Draw the background if necessary
+        if self.render_background && self.background_color.is_some() {
+            let color = self.background_color.as_ref().unwrap();
+            gl.clear_color(color.get_red_float(), color.get_green_float(), color.get_blue_float(), color.get_alpha_float());
+            gl.clear(WebGlRenderingContext::COLOR_BUFFER_BIT);
+
+            // Once the background has been drawn, don't redraw until we need to do it again
+            self.render_background = false;
+        }
+
         let mut cursor_result = None;
 
         let mut components_to_add = Vec::new();

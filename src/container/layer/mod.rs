@@ -19,6 +19,7 @@ use wasmuri_events::{
     MouseMoveEvent,
     RenderEvent
 };
+use wasmuri_core::util::color::Color;
 
 use web_sys::WebGlRenderingContext;
 
@@ -36,10 +37,10 @@ pub struct Layer {
 
 impl Layer {
 
-    pub fn new() -> Layer {
+    pub fn new(background_color: Option<Color>) -> Layer {
         Layer {
             components: Vec::with_capacity(10),
-            render_manager: RenderManager::new()
+            render_manager: RenderManager::new(background_color)
         }
     }
 
