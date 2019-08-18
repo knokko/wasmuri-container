@@ -34,14 +34,14 @@ pub struct ContainerManager {
     
     current_container: Option<Rc<RefCell<dyn Container>>>,
 
-    text_renderer: RefCell<TextRenderer<'static>>
+    text_renderer: RefCell<TextRenderer>
 }
 
 impl ContainerManager {
 
     pub fn start(canvas: HtmlCanvasElement) -> Rc<RefCell<ContainerManager>> {
 
-        let gl = canvas.get_context("webgl").expect("Should have get_context method").expect("Should be able to get webgl context").dyn_into::<WebGlRenderingContext>().expect("webgl context should be a WebGlRenderingContext");
+        let gl = wasmuri_core::get_gl(&canvas);
 
         let html_canvas = canvas.clone();
         let text_renderer = RefCell::new(TextRenderer::from_canvas(&html_canvas));
@@ -85,7 +85,7 @@ impl ContainerManager {
     }
 
     /// Gives a reference to the TextRenderer of this ContainerManager, which is inside a RefCell.
-    pub fn get_text_renderer(&self) -> &RefCell<TextRenderer<'static>> {
+    pub fn get_text_renderer(&self) -> &RefCell<TextRenderer> {
         &self.text_renderer
     }
 

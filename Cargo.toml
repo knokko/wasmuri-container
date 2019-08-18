@@ -8,9 +8,9 @@ edition = "2018"
 
 [dependencies]
 wasm-bindgen = "0.2"
-wasmuri-core = { git = "https://github.com/knokko/wasmuri-core" }
-wasmuri-events = { git = "https://github.com/knokko/wasmuri-events" }
-wasmuri-text = { git = "https://github.com/knokko/wasmuri-text" }
+wasmuri-core = { path = "../core" }
+wasmuri-events = { path = "../events" }
+wasmuri-text = { path = "../text" }
 
 [dependencies.web-sys]
 version = "0.3"

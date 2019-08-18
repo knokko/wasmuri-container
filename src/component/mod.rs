@@ -1,5 +1,5 @@
 use crate::container::layer::LayerAgent;
-use crate::container::layer::agent::RenderAgent;
+use crate::container::layer::RenderAgent;
 
 use crate::cursor::Cursor;
 

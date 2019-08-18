@@ -7,12 +7,10 @@ use crate::cursor::Cursor;
 mod region;
 mod handle;
 
-// Internal use only
 mod render;
 
 use render::{
-    RenderManager,
-    RenderTrigger
+    RenderManager
 };
 
 use wasmuri_events::{
@@ -23,10 +21,12 @@ use wasmuri_core::util::color::Color;
 
 use web_sys::WebGlRenderingContext;
 
-pub mod agent;
+mod agent;
 
+pub use agent::*;
 pub use region::Region;
 pub use handle::ComponentHandle;
+pub use render::RenderTrigger;
 
 pub struct Layer {
     
