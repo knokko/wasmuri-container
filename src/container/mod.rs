@@ -37,4 +37,7 @@ pub trait Container {
     fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult;
 
     fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult;
+
+    /// When this method has been called, the Container should re-render everything the next time render is called.
+    fn force_render(&mut self, manager: &ContainerManager);
 }

@@ -73,6 +73,10 @@ impl Layer {
 
         render_result.0
     }
+
+    pub fn force_render(&mut self, manager: &ContainerManager){
+        self.render_manager.force_render(manager);
+    }
 }
 
 pub struct LayerAgent<'a> {

@@ -163,6 +163,13 @@ impl RenderManager {
         (cursor_result, components_to_add)
     }
 
+    pub fn force_render(&mut self, _manager: &ContainerManager){
+        self.render_background = true;
+        for handle in &mut self.render_components {
+            handle.needs_render = true;
+        }
+    }
+
     pub fn on_mouse_move<'a>(&'a mut self, event: &MouseMoveEvent, manager: &'a ContainerManager){
 
         let old_mouse_pos = manager.get_mouse_position();

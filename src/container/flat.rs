@@ -69,4 +69,8 @@ impl Container for FlatContainer {
             None => Cursor::DEFAULT
         }
     }
+
+    fn force_render(&mut self, manager: &ContainerManager){
+        self.layer.force_render(manager);
+    }
 }

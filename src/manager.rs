@@ -24,9 +24,15 @@ pub trait ManagerAction {
     fn execute(&mut self, manager: &mut ContainerManager);
 }
 
+pub trait ResizeListener {
+
+    fn on_resize(&self, manager: &ContainerManager, event: &ResizeEvent);
+}
+
 pub struct ContainerManager {
 
     canvas: HtmlCanvasElement,
+    resize_listener: Option<Box<dyn ResizeListener>>,
     prev_cursor: Option<Cursor>,
     gl: WebGlRenderingContext,
 
@@ -39,11 +45,20 @@ pub struct ContainerManager {
 
 impl ContainerManager {
 
-    pub fn start(canvas: HtmlCanvasElement) -> Rc<RefCell<ContainerManager>> {
+    pub fn start(canvas: HtmlCanvasElement, resize_listener: Option<Box<dyn ResizeListener>>) -> Rc<RefCell<ContainerManager>> {
 
         let gl = wasmuri_core::get_gl(&canvas);
 
         let html_canvas = canvas.clone();
+
+        let window = web_sys::window().expect("Should have window");
+        let width = window.inner_width().expect("Should be able to call window.innerWidth").as_f64().expect("innerWidth should be f64") as u32;
+        let height = window.inner_height().expect("Should be able to call window.innerHeight").as_f64().expect("innerHeight should be f64") as u32;
+
+        html_canvas.set_width(width);
+        html_canvas.set_height(height);
+        gl.viewport(0, 0, width as i32, height as i32);
+
         let text_renderer = RefCell::new(TextRenderer::from_canvas(&html_canvas));
         set_event_source(&html_canvas.dyn_into::<HtmlElement>().expect("A canvas should be an HtmlElement"));
 
@@ -51,6 +66,7 @@ impl ContainerManager {
             canvas,
             prev_cursor: None,
             gl,
+            resize_listener,
 
             // I'm afraid I can't retrieve the mouse position until the mouse moves for the first time
             mouse_position: (0, 0),
@@ -67,6 +83,7 @@ impl ContainerManager {
         start_listen(&manager_cell, &MOUSE_CLICK_HANDLER);
         start_listen(&manager_cell, &MOUSE_MOVE_HANDLER);
         start_listen(&manager_cell, &MOUSE_SCROLL_HANDLER);
+        start_listen(&manager_cell, &RESIZE_HANDLER);
         start_listen(&manager_cell, &UPDATE_HANDLER);
         start_listen(&manager_cell, &RENDER_HANDLER);
 
@@ -75,6 +92,18 @@ impl ContainerManager {
 
     pub fn set_container_cell(&mut self, new_container: Rc<RefCell<dyn Container>>){
         self.current_container = Some(new_container);
+    }
+
+    pub fn set_resize_listener(&mut self, new_listener: Option<Box<dyn ResizeListener>>){
+        self.resize_listener = new_listener;
+    }
+
+    pub fn get_gl(&self) -> &WebGlRenderingContext {
+        &self.gl
+    }
+
+    pub fn get_canvas(&self) -> &HtmlCanvasElement {
+        &self.canvas
     }
 
     fn process_result(&mut self, result: EventResult){
@@ -188,6 +217,29 @@ impl Listener<UpdateEvent> for ContainerManager {
                 claim_container.on_update(event, self)
             }, None => None
         });
+    }
+}
+
+impl Listener<ResizeEvent> for ContainerManager {
+
+    fn process(&mut self, event: &ResizeEvent){
+        match &self.resize_listener {
+            Some(listener) => { listener.on_resize(self, event); },
+            None => {
+
+                self.canvas.set_width(event.get_new_width());
+                self.canvas.set_height(event.get_new_height());
+
+                self.gl.viewport(0, 0, event.get_new_width() as i32, event.get_new_height() as i32);
+
+                match &self.current_container {
+                    Some(cell) => {
+                        let mut container = cell.borrow_mut();
+                        container.force_render(self);
+                    }, None => {}
+                };
+            }
+        };
     }
 }
 
