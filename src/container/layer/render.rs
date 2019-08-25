@@ -5,10 +5,19 @@ use crate::{
 use crate::cursor::Cursor;
 
 use std::cell::RefCell;
+use std::cmp::{
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord
+};
 use std::rc::Weak;
 
-use super::Region;
-use super::agent::RenderAgent;
+use super::{
+    ComponentHandle,
+    OuterHandle,
+    Region
+};
 
 use wasmuri_core::util::color::Color;
 use wasmuri_events::{
@@ -27,56 +36,32 @@ pub enum RenderTrigger {
     Always
 }
 
+#[derive(PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
+pub enum RenderPhase {
+
+    Start,
+    Text,
+    End
+}
+
 struct RenderHandle {
     
-    component: Weak<RefCell<Box<dyn Component>>>,
+    component: Weak<RefCell<ComponentHandle>>,
 
     region: Region,
 
     trigger: RenderTrigger,
-    needs_render: bool
+    phase: RenderPhase
 }
 
 impl RenderHandle {
     
-    fn new(component: Weak<RefCell<Box<dyn Component>>>, region: Region, trigger: RenderTrigger) -> RenderHandle {
+    fn new(component: &OuterHandle, region: Region, trigger: RenderTrigger, phase: RenderPhase) -> RenderHandle {
         RenderHandle {
-            component,
+            component: component.create_weak(),
             region,
             trigger,
-
-            // Every component should render the first time
-            needs_render: true
-        }
-    }
-
-    fn should_render(&self) -> bool {
-        match &self.trigger {
-            RenderTrigger::Always => true,
-            _others => self.needs_render
-        }
-    }
-
-    fn render<'a>(&'a mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager) -> (RenderAgent<'a>,Option<Cursor>) {
-        match self.component.upgrade() {
-            Some(component_cell) => {
-
-                let mut component_box = component_cell.borrow_mut();
-                let mut agent = RenderAgent::new(&self.region, manager);
-
-                let cursor = component_box.render(gl, &mut agent, event);
-
-                // Set this to false after every render
-                self.needs_render = false;
-
-                (agent, cursor)
-            }, None => {
-
-                // Remove the component from the list
-                let mut agent = RenderAgent::new(&self.region, manager);
-                agent.remove_this_component();
-                (agent, None)
-            }
+            phase,
         }
     }
 }
@@ -100,9 +85,17 @@ impl RenderManager {
     }
 
     /// Should only be called after can_claim confirms that the region can be claimed!
-    pub fn claim_space(&mut self, region: Region, trigger: RenderTrigger, component: Weak<RefCell<Box<dyn Component>>>) {
+    pub fn claim_space(&mut self, region: Region, trigger: RenderTrigger, phase: RenderPhase, component: &OuterHandle) {
 
-        self.render_components.push(RenderHandle::new(component, region, trigger));
+        let maybe_index = self.render_components.binary_search_by(|other: &RenderHandle| {
+            other.phase.cmp(&phase)
+        });
+        let index;
+        match maybe_index {
+            Ok(the_index) => index = the_index,
+            Err(the_index) => index = the_index
+        };
+        self.render_components.insert(index, RenderHandle::new(component, region, trigger, phase));
     }
 
     pub fn can_claim(&self, region: Region) -> bool {
@@ -116,7 +109,7 @@ impl RenderManager {
         return true;
     }
 
-    pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager) -> (Option<Cursor>,Vec<Box<dyn Component>>) {
+    pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager) -> Option<Cursor> {
 
         // Draw the background if necessary
         if self.render_background && self.background_color.is_some() {
@@ -130,44 +123,50 @@ impl RenderManager {
 
         let mut cursor_result = None;
 
-        let mut components_to_add = Vec::new();
-
         let mouse_position = manager.get_mouse_position();
+
+        let mut previous_render_phase = RenderPhase::Start;
+
         self.render_components.drain_filter(|handle| {
-            if handle.should_render() {
-                let render_result = handle.render(gl, event, manager);
-                let mut result_agent = render_result.0;
-                let result_cursor = render_result.1;
+            match handle.component.upgrade() {
+                Some(component_cell) => {
+                    let mut component_handle = component_cell.borrow_mut();
+                    let requested_render = component_handle.get_agent().did_request_render();
+                    if requested_render {
 
-                let requested_removal = result_agent.did_request_removal();
+                        if previous_render_phase != handle.phase {
 
-                components_to_add.append(result_agent.get_components_to_add());
+                            // Currently, the Text phase is the only phase that has built-in support, other phases will have to prepare themselves
+                            if handle.phase == RenderPhase::Text {
+                                manager.get_text_renderer().borrow_mut().start_rendering();
+                            }
 
-                if result_agent.did_request_render() {
-                    handle.needs_render = true;
-                }
+                            previous_render_phase = handle.phase;
+                        }
 
-                // If the mouse is hovering over the element, that element will determine the cursor
-                if handle.region.is_inside(mouse_position) {
-                    cursor_result = result_cursor;
-                }
-                // TODO Remove all components in the components_to_remove
+                        let local_cursor = component_handle.render(gl, event, manager);
+                        if handle.region.is_inside(mouse_position) {
+                            cursor_result = local_cursor;
+                        }
+                        
+                        false
+                    } else {
 
-                // Only drain the elements that didn't request removal
-                requested_removal
-            } else {
-                false
+                        if handle.region.is_inside(mouse_position) {
+                            cursor_result = component_handle.get_cursor(event, manager);
+                        }
+
+                        false
+                    }
+                }, None => true
             }
         });
 
-        (cursor_result, components_to_add)
+        cursor_result
     }
 
     pub fn force_render(&mut self, _manager: &ContainerManager){
         self.render_background = true;
-        for handle in &mut self.render_components {
-            handle.needs_render = true;
-        }
     }
 
     pub fn on_mouse_move<'a>(&'a mut self, event: &MouseMoveEvent, manager: &'a ContainerManager){
@@ -175,22 +174,29 @@ impl RenderManager {
         let old_mouse_pos = manager.get_mouse_position();
         let new_mouse_pos = manager.to_gl_coords((event.mouse_event.offset_x(), event.mouse_event.offset_y()));
         for handle in &mut self.render_components {
-            match &mut handle.trigger {
-                RenderTrigger::MouseMove => handle.needs_render = true,
+            let needs_render = match &mut handle.trigger {
+                RenderTrigger::MouseMove => true,
                 RenderTrigger::MouseMoveInside => {
                     let was_in = handle.region.is_inside(old_mouse_pos);
                     let is_in = handle.region.is_inside(new_mouse_pos);
-                    if was_in || is_in {
-                        handle.needs_render = true;
-                    }
+                    was_in || is_in
                 }, RenderTrigger::MouseInOut => {
                     let was_in = handle.region.is_inside(old_mouse_pos);
                     let is_in = handle.region.is_inside(new_mouse_pos);
-                    if was_in != is_in {
-                        handle.needs_render = true;
-                    }
-                }, _other => {}
+                    was_in != is_in
+                }, _other => false
             };
+
+            if needs_render {
+                match handle.component.upgrade() {
+                    Some(component_cell) => {
+                        let mut the_component = component_cell.borrow_mut();
+                        the_component.get_agent().request_render();
+                    }, None => {
+                        // If the component happens to be dropped, it will be removed from the vec during the next frame
+                    }
+                };
+            }
         }
     }
 }
