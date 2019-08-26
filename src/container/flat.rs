@@ -8,6 +8,7 @@ use crate::cursor::Cursor;
 use super::Container;
 use super::layer::Layer;
 
+use wasmuri_core::util::print;
 use wasmuri_events::{
     KeyDownEvent,
     KeyUpEvent,
@@ -37,11 +38,15 @@ impl FlatContainer {
 // TODO Implement the trait methods properly, this is just for the initial test
 impl Container for FlatContainer {
 
-    fn on_key_down(&mut self, _event: &KeyDownEvent, _manager: &ContainerManager) -> EventResult {
+    fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> EventResult {
+        self.layer.on_key_down(event, manager);
+        print("FlatContainer.on_key_down");
         None
     }
 
-    fn on_key_up(&mut self, _event: &KeyUpEvent, _manager: &ContainerManager) -> EventResult {
+    fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> EventResult {
+        self.layer.on_key_up(event, manager);
+        print("FlatContainer.on_key_up");
         None
     }
 

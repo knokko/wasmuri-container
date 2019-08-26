@@ -1,15 +1,12 @@
-use crate::{
-    Component,
-    ContainerManager
-};
+use crate::ContainerManager;
 
 use std::cell::RefCell;
 use std::rc::Weak;
 
 use super::{
-    KeyDownAgent,
     ComponentHandle,
-    Region
+    Region,
+    OuterHandle
 };
 
 use wasmuri_events::{
@@ -73,6 +70,68 @@ impl KeyListenManager {
             full_down_listeners: Vec::new(),
             full_up_listeners: Vec::new()
         }
+    }
+
+    pub fn can_claim_down(&self, region: Region) -> bool {
+        for handle in &self.hover_down_listeners {
+            if handle.region.intersects_with(&region) {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    pub fn can_claim_up(&self, region: Region) -> bool {
+        for handle in &self.hover_up_listeners {
+            if handle.region.intersects_with(&region) {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Should only be used after can_claim_down confirmed that the given region is available
+    pub fn add_region_key_down_listener(&mut self, listener: &OuterHandle, region: Region){
+        self.hover_down_listeners.push(HoverListenHandle {
+            component: listener.create_weak(),
+            region
+        });
+    }
+
+    /// Should only be used after can_claim_up confirmed that the given region is available
+    pub fn add_region_key_up_listener(&mut self, listener: &OuterHandle, region: Region){
+        self.hover_up_listeners.push(HoverListenHandle {
+            component: listener.create_weak(),
+            region
+        });
+    }
+
+    pub fn add_global_key_down_listener(&mut self, listener: &OuterHandle, priority: i8){
+        Self::add_global_key_listener(&mut self.full_down_listeners, listener, priority);
+    }
+
+    pub fn add_global_key_up_listener(&mut self, listener: &OuterHandle, priority: i8){
+        Self::add_global_key_listener(&mut self.full_up_listeners, listener, priority);
+    }
+
+    fn add_global_key_listener(list: &mut Vec<KeyListenHandle>, listener: &OuterHandle, priority: i8){
+        let maybe_index = list.binary_search_by(|existing| {
+
+            // Intentionally INVERT the order so that the higher priorities come first
+            priority.cmp(&existing.priority)
+        });
+
+        let index;
+        match maybe_index {
+            Ok(the_index) => index = the_index,
+            Err(the_index) => index = the_index
+        };
+        list.insert(index, KeyListenHandle {
+            component: listener.create_weak(),
+            priority
+        });
     }
 
     pub fn fire_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager){

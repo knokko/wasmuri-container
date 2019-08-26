@@ -13,6 +13,7 @@ mod keylistening;
 use render::RenderManager;
 use keylistening::KeyListenManager;
 
+use wasmuri_core::util::print;
 use wasmuri_events::{
     MouseMoveEvent,
     KeyDownEvent,
@@ -54,21 +55,6 @@ impl Layer {
         }
     }
 
-    pub fn add_component(&mut self, mut component: Box<dyn Component>){
-        let mut agent = LayerAgent::new(self);
-        component.attach(&mut agent);
-
-        let handle = OuterHandle::new(component, self.components.len());
-
-        match agent.render_handle {
-            Some(render_handle) => {
-                self.render_manager.claim_space(render_handle.0, render_handle.1, render_handle.2, &handle);
-            }, None => {}
-        };
-
-        self.components.push(handle);
-    }
-
     pub fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager){
         self.render_manager.on_mouse_move(event, manager);
 
@@ -77,12 +63,14 @@ impl Layer {
 
     pub fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager){
         self.key_manager.fire_key_down(event, manager);
+        print("layer.on_key_down");
 
         self.check_agents();
     }
 
     pub fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager){
         self.key_manager.fire_key_up(event, manager);
+        print("layer.on_key_up");
 
         self.check_agents();
     }
@@ -125,13 +113,64 @@ impl Layer {
     pub fn force_render(&mut self, manager: &ContainerManager){
         self.render_manager.force_render(manager);
     }
+
+    pub fn add_component(&mut self, mut component: Box<dyn Component>){
+        let mut agent = LayerAgent::new(self);
+        component.attach(&mut agent);
+
+        let render_handle = agent.render_handle;
+        let key_down_space = agent.key_down_space;
+        let key_up_space = agent.key_up_space;
+        let key_down_priority = agent.key_down_priority;
+        let key_up_priority = agent.key_up_priority;
+
+        let handle = OuterHandle::new(component, self.components.len());
+
+        match render_handle {
+            Some(render_handle) => {
+                self.render_manager.claim_space(render_handle.0, render_handle.1, render_handle.2, &handle);
+            }, None => {}
+        };
+
+        match key_down_space {
+            Some(region) => {
+                self.key_manager.add_region_key_down_listener(&handle, region);
+            }, None => {}
+        };
+
+        match key_up_space {
+            Some(region) => {
+                self.key_manager.add_region_key_up_listener(&handle, region);
+            }, None => {}
+        };
+
+        match key_down_priority {
+            Some(priority) => {
+                self.key_manager.add_global_key_down_listener(&handle, priority);
+            }, None => {}
+        };
+
+        match key_up_priority {
+            Some(priority) => {
+                self.key_manager.add_global_key_up_listener(&handle, priority);
+            }, None => {}
+        };
+
+        self.components.push(handle);
+    }
 }
 
 pub struct LayerAgent<'a> {
 
     layer: &'a Layer,
 
-    render_handle: Option<(Region,RenderTrigger,RenderPhase)>
+    render_handle: Option<(Region,RenderTrigger,RenderPhase)>,
+
+    key_down_space: Option<Region>,
+    key_up_space: Option<Region>,
+
+    key_down_priority: Option<i8>,
+    key_up_priority: Option<i8>
 }
 
 impl<'a> LayerAgent<'a> {
@@ -140,7 +179,11 @@ impl<'a> LayerAgent<'a> {
         LayerAgent {
             layer,
 
-            render_handle: None
+            render_handle: None,
+            key_down_space: None,
+            key_up_space: None,
+            key_down_priority: None,
+            key_up_priority: None
         }
     }
 
@@ -154,5 +197,46 @@ impl<'a> LayerAgent<'a> {
         Ok(())
     }
 
-    // TODO Add methods for claiming key listening space
+    pub fn claim_key_down_space(&mut self, region: Region) -> Result<(),()> {
+
+        if !self.layer.key_manager.can_claim_down(region) {
+            return Err(());
+        }
+
+        self.key_down_space = Some(region);
+        Ok(())
+    }
+
+    pub fn claim_key_up_space(&mut self, region: Region) -> Result<(),()> {
+
+        if !self.layer.key_manager.can_claim_up(region) {
+            return Err(());
+        }
+
+        self.key_up_space = Some(region);
+        Ok(())
+    }
+
+    pub fn claim_key_listen_space(&mut self, region: Region) -> Result<(),()> {
+        if !self.layer.key_manager.can_claim_down(region) && !self.layer.key_manager.can_claim_up(region) {
+            return Err(());
+        }
+
+        self.key_down_space = Some(region);
+        self.key_up_space = Some(region);
+        Ok(())
+    }
+
+    pub fn make_key_down_listener(&mut self, priority: i8){
+        self.key_down_priority = Some(priority);
+    }
+
+    pub fn make_key_up_listener(&mut self, priority: i8){
+        self.key_up_priority = Some(priority);
+    }
+
+    pub fn make_key_listener(&mut self, priority: i8){
+        self.key_down_priority = Some(priority);
+        self.key_up_priority = Some(priority);
+    }
 }

@@ -1,7 +1,4 @@
-use crate::{
-    Component,
-    ContainerManager
-};
+use crate::ContainerManager;
 use crate::cursor::Cursor;
 
 use std::cell::RefCell;
@@ -87,8 +84,8 @@ impl RenderManager {
     /// Should only be called after can_claim confirms that the region can be claimed!
     pub fn claim_space(&mut self, region: Region, trigger: RenderTrigger, phase: RenderPhase, component: &OuterHandle) {
 
-        let maybe_index = self.render_components.binary_search_by(|other: &RenderHandle| {
-            other.phase.cmp(&phase)
+        let maybe_index = self.render_components.binary_search_by(|existing| {
+            existing.phase.cmp(&phase)
         });
         let index;
         match maybe_index {

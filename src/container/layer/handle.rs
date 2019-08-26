@@ -55,11 +55,11 @@ impl ComponentHandle {
     }
 
     pub fn key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> bool {
-        self.component.key_down(event, manager)
+        self.component.key_down(&mut self.agent, event, manager)
     }
 
     pub fn key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> bool {
-        self.component.key_up(event, manager)
+        self.component.key_up(&mut self.agent, event, manager)
     }
 }
 
