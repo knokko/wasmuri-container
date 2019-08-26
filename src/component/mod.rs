@@ -34,7 +34,7 @@ pub trait Component {
         panic!("The mouseclick operation is not supported for this component!");
     }
 
-    fn mouse_scroll(&mut self, _agent: &mut ComponentAgent, _event: &MouseScrollEvent, _manager: &ContainerManager){
+    fn mouse_scroll(&mut self, _agent: &mut ComponentAgent, _event: &MouseScrollEvent, _manager: &ContainerManager) -> bool {
         panic!("The mousescroll operation is not supported for this component!");
     }
 

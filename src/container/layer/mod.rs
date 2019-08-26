@@ -9,13 +9,16 @@ mod handle;
 
 mod render;
 mod keylistening;
+mod mouselistening;
 
 use render::RenderManager;
 use keylistening::KeyListenManager;
+use mouselistening::MouseManager;
 
-use wasmuri_core::util::print;
 use wasmuri_events::{
+    MouseClickEvent,
     MouseMoveEvent,
+    MouseScrollEvent,
     KeyDownEvent,
     KeyUpEvent,
     RenderEvent
@@ -42,6 +45,7 @@ pub struct Layer {
     components: Vec<OuterHandle>,
 
     key_manager: KeyListenManager,
+    mouse_manager: MouseManager,
     render_manager: RenderManager
 }
 
@@ -51,26 +55,38 @@ impl Layer {
         Layer {
             components: Vec::with_capacity(10),
             render_manager: RenderManager::new(background_color),
-            key_manager: KeyListenManager::new()
+            key_manager: KeyListenManager::new(),
+            mouse_manager: MouseManager::new()
         }
     }
 
     pub fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager){
+        self.mouse_manager.fire_mouse_move(event, manager);
         self.render_manager.on_mouse_move(event, manager);
+
+        self.check_agents();
+    }
+
+    pub fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager){
+        self.mouse_manager.fire_mouse_click(event, manager);
+
+        self.check_agents();
+    }
+
+    pub fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager){
+        self.mouse_manager.fire_mouse_scroll(event, manager);
 
         self.check_agents();
     }
 
     pub fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager){
         self.key_manager.fire_key_down(event, manager);
-        print("layer.on_key_down");
 
         self.check_agents();
     }
 
     pub fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager){
         self.key_manager.fire_key_up(event, manager);
-        print("layer.on_key_up");
 
         self.check_agents();
     }
@@ -239,4 +255,6 @@ impl<'a> LayerAgent<'a> {
         self.key_down_priority = Some(priority);
         self.key_up_priority = Some(priority);
     }
+
+    // TODO Add methods to register as mouse listener
 }

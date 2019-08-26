@@ -16,6 +16,9 @@ use super::ComponentAgent;
 use wasmuri_events::{
     KeyDownEvent,
     KeyUpEvent,
+    MouseClickEvent,
+    MouseMoveEvent,
+    MouseScrollEvent,
     RenderEvent
 };
 use web_sys::WebGlRenderingContext;
@@ -60,6 +63,18 @@ impl ComponentHandle {
 
     pub fn key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> bool {
         self.component.key_up(&mut self.agent, event, manager)
+    }
+
+    pub fn mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) {
+        self.component.mouse_move(&mut self.agent, event, manager);
+    }
+
+    pub fn mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) {
+        self.component.mouse_click(&mut self.agent, event, manager);
+    }
+
+    pub fn mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> bool {
+        self.component.mouse_scroll(&mut self.agent, event, manager)
     }
 }
 

@@ -152,8 +152,6 @@ impl KeyListenManager {
                 Some(component_cell) => {
                     if !consumed && handle.region.is_inside(mouse_pos) {
                         let mut component_handle = component_cell.borrow_mut();
-
-                        //consumed = component_handle.key_down(event, manager);
                         consumed = processor.process(&mut component_handle, event, manager);
                     }
                     false
@@ -168,8 +166,6 @@ impl KeyListenManager {
                     Some(component_cell) => {
                         if !consumed {
                             let mut component_handle = component_cell.borrow_mut();
-
-                            //consumed = component_handle.key_down(event, manager);
                             consumed = processor.process(&mut component_handle, event, manager);
                         }
                         false
