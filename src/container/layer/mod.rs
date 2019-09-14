@@ -135,10 +135,18 @@ impl Layer {
         component.attach(&mut agent);
 
         let render_handle = agent.render_handle;
+
         let key_down_space = agent.key_down_space;
         let key_up_space = agent.key_up_space;
         let key_down_priority = agent.key_down_priority;
         let key_up_priority = agent.key_up_priority;
+
+        let mouse_click_space = agent.mouse_click_space;
+        let mouse_scroll_space = agent.mouse_scroll_space;
+        let mouse_scroll_priority = agent.mouse_scroll_priority;
+        let mouse_move_space = agent.mouse_move_space;
+        let mouse_move_in_out_space = agent.mouse_move_in_out_space;
+        let mouse_move_global = agent.mouse_move_global;
 
         let handle = OuterHandle::new(component, self.components.len());
 
@@ -172,6 +180,40 @@ impl Layer {
             }, None => {}
         };
 
+        match mouse_click_space {
+            Some(space) => {
+                self.mouse_manager.add_click_listener(&handle, space);
+            }, None => {}
+        };
+
+        match mouse_scroll_space {
+            Some(space) => {
+                self.mouse_manager.add_scroll_space_listener(&handle, space);
+            }, None => {}
+        };
+
+        match mouse_scroll_priority {
+            Some(priority) => {
+                self.mouse_manager.add_full_scroll_listener(&handle, priority);
+            }, None => {}
+        };
+
+        match mouse_move_space {
+            Some(space) => {
+                self.mouse_manager.add_move_space_listener(&handle, space);
+            }, None => {}
+        };
+
+        match mouse_move_in_out_space {
+            Some(space) => {
+                self.mouse_manager.add_in_out_move_listener(&handle, space);
+            }, None => {}
+        };
+
+        if mouse_move_global {
+            self.mouse_manager.add_full_move_listener(&handle);
+        }
+
         self.components.push(handle);
     }
 }
@@ -186,7 +228,16 @@ pub struct LayerAgent<'a> {
     key_up_space: Option<Region>,
 
     key_down_priority: Option<i8>,
-    key_up_priority: Option<i8>
+    key_up_priority: Option<i8>,
+
+    mouse_click_space: Option<Region>,
+
+    mouse_scroll_space: Option<Region>,
+    mouse_scroll_priority: Option<i8>,
+
+    mouse_move_space: Option<Region>,
+    mouse_move_in_out_space: Option<Region>,
+    mouse_move_global: bool
 }
 
 impl<'a> LayerAgent<'a> {
@@ -196,10 +247,21 @@ impl<'a> LayerAgent<'a> {
             layer,
 
             render_handle: None,
+
             key_down_space: None,
             key_up_space: None,
+
             key_down_priority: None,
-            key_up_priority: None
+            key_up_priority: None,
+
+            mouse_click_space: None,
+
+            mouse_scroll_space: None,
+            mouse_scroll_priority: None,
+
+            mouse_move_space: None,
+            mouse_move_in_out_space: None,
+            mouse_move_global: false
         }
     }
 
@@ -256,5 +318,37 @@ impl<'a> LayerAgent<'a> {
         self.key_up_priority = Some(priority);
     }
 
-    // TODO Add methods to register as mouse listener
+    pub fn claim_mouse_click_space(&mut self, region: Region) -> Result<(),()> {
+        if !self.layer.mouse_manager.can_claim_click_space(region) {
+            return Err(());
+        }
+
+        self.mouse_click_space = Some(region);
+        Ok(())
+    }
+
+    pub fn claim_mouse_scroll_space(&mut self, region: Region) -> Result<(),()> {
+        if !self.layer.mouse_manager.can_claim_scroll_space(region) {
+            return Err(());
+        }
+
+        self.mouse_scroll_space = Some(region);
+        Ok(())
+    }
+
+    pub fn make_mouse_scroll_listener(&mut self, priority: i8) {
+        self.mouse_scroll_priority = Some(priority);
+    }
+
+    pub fn claim_mouse_move_space(&mut self, region: Region){
+        self.mouse_move_space = Some(region);
+    }
+
+    pub fn claim_mouse_in_out_space(&mut self, region: Region){
+        self.mouse_move_in_out_space = Some(region);
+    }
+
+    pub fn make_mouse_move_listener(&mut self){
+        self.mouse_move_global = true;
+    }
 }

@@ -50,6 +50,8 @@ impl Container for FlatContainer {
         None
     }
 
+    // TODO Implement the mouse methods properly
+
     fn on_mouse_click(&mut self, _event: &MouseClickEvent, _manager: &ContainerManager) -> EventResult {
         None
     }

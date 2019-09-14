@@ -24,6 +24,7 @@ use wasmuri_events::{
 
 use web_sys::WebGlRenderingContext;
 
+#[derive(Clone,Copy)]
 pub enum RenderTrigger {
 
     Request,
