@@ -24,4 +24,28 @@ impl Region {
     pub fn is_inside(&self, point: (f32,f32)) -> bool {
         point.0 > self.min_x && point.0 < self.max_x && point.1 > self.min_y && point.1 < self.max_y
     }
+
+    pub fn get_min_x(&self) -> f32 {
+        self.min_x
+    }
+
+    pub fn get_min_y(&self) -> f32 {
+        self.min_y
+    }
+
+    pub fn get_max_x(&self) -> f32 {
+        self.max_x
+    }
+
+    pub fn get_max_y(&self) -> f32 {
+        self.max_y
+    }
+
+    pub fn get_width(&self) -> f32 {
+        self.max_x - self.min_x
+    }
+
+    pub fn get_height(&self) -> f32 {
+        self.max_y - self.min_y
+    }
 }

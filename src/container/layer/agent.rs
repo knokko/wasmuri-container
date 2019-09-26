@@ -1,7 +1,11 @@
 use crate::{
     Component,
-    ContainerManager
+    ContainerManager,
+    Container
 };
+
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use super::Region;
 
@@ -11,6 +15,8 @@ pub struct ComponentAgent {
     requested_removal: bool,
 
     components_to_add: Vec<Box<dyn Component>>,
+
+    new_container: Option<Rc<RefCell<dyn Container>>>,
 
     has_changes: bool
 }
@@ -26,6 +32,8 @@ impl ComponentAgent {
             requested_removal: false,
 
             components_to_add: Vec::new(),
+
+            new_container: None,
 
             has_changes: false
         }
@@ -53,6 +61,11 @@ impl ComponentAgent {
         self.has_changes = true;
     }
 
+    pub fn change_container(&mut self, new_container: Rc<RefCell<dyn Container>>){
+        self.new_container = Some(new_container);
+        self.has_changes = true;
+    }
+
     /// Checks if the request_render() method of this agent has been called
     pub fn did_request_render(&self) -> bool {
         self.requested_render
@@ -66,6 +79,17 @@ impl ComponentAgent {
     /// Gives a mutable reference to the collection of all components passed to this agent by the remove_other_component method
     pub fn get_components_to_add(&mut self) -> &mut Vec<Box<dyn Component>> {
         &mut self.components_to_add
+    }
+
+    /// Checks if the component requested to change the current container
+    pub fn requested_container_change(&self) -> bool {
+        self.new_container.is_some()
+    }
+
+    /// Gets the container that this component requested to become the current container.
+    /// This method should only be used after requested_container_change() returned true, or it may panic.
+    pub fn get_new_container(&self) -> Rc<RefCell<dyn Container>> {
+        Rc::clone(&self.new_container.as_ref().expect("new_container should have been set"))
     }
 
     /// Sets the needs_render flag of this agent to false. 

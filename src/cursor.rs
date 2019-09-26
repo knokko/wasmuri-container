@@ -58,7 +58,7 @@ impl Cursor {
     pub fn to_css_value(&self) -> String {
         match self {
             Cursor::URL(_csv) => {
-                panic!("Should add support for this...");
+                panic!("Should add support for url cursors...");
             },
             normal => {
                 format!("{}", normal)

@@ -1,4 +1,4 @@
-#![feature(drain_filter)]
+#![feature(drain_filter, option_expect_none)]
 
 mod manager;
 mod container;

@@ -2,18 +2,24 @@ use crate::{
     Component,
     ContainerManager
 };
+use crate::manager::EventResult;
 use crate::cursor::Cursor;
 
 mod region;
 mod handle;
 
+mod update;
 mod render;
 mod keylistening;
 mod mouselistening;
 
 use render::RenderManager;
+use update::UpdateManager;
 use keylistening::KeyListenManager;
 use mouselistening::MouseManager;
+
+use wasmuri_core::util::color::Color;
+use wasmuri_core::util::print;
 
 use wasmuri_events::{
     MouseClickEvent,
@@ -21,9 +27,9 @@ use wasmuri_events::{
     MouseScrollEvent,
     KeyDownEvent,
     KeyUpEvent,
+    UpdateEvent,
     RenderEvent
 };
-use wasmuri_core::util::color::Color;
 
 use web_sys::WebGlRenderingContext;
 
@@ -46,6 +52,7 @@ pub struct Layer {
 
     key_manager: KeyListenManager,
     mouse_manager: MouseManager,
+    update_manager: UpdateManager,
     render_manager: RenderManager
 }
 
@@ -55,57 +62,72 @@ impl Layer {
         Layer {
             components: Vec::with_capacity(10),
             render_manager: RenderManager::new(background_color),
+            update_manager: UpdateManager::new(),
             key_manager: KeyListenManager::new(),
             mouse_manager: MouseManager::new()
         }
     }
 
-    pub fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager){
+    pub fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) -> EventResult {
         self.mouse_manager.fire_mouse_move(event, manager);
         self.render_manager.on_mouse_move(event, manager);
 
-        self.check_agents();
+        self.check_agents()
     }
 
-    pub fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager){
+    pub fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> EventResult {
         self.mouse_manager.fire_mouse_click(event, manager);
 
-        self.check_agents();
+        self.check_agents()
     }
 
-    pub fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager){
+    pub fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> EventResult{
         self.mouse_manager.fire_mouse_scroll(event, manager);
 
-        self.check_agents();
+        self.check_agents()
     }
 
-    pub fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager){
+    pub fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> EventResult {
         self.key_manager.fire_key_down(event, manager);
 
-        self.check_agents();
+        self.check_agents()
     }
 
-    pub fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager){
+    pub fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> EventResult {
         self.key_manager.fire_key_up(event, manager);
 
-        self.check_agents();
+        self.check_agents()
+    }
+
+    pub fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult {
+        self.update_manager.fire_update(event, manager);
+
+        self.check_agents()
     }
 
     pub fn on_render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> Option<Cursor> {
         let render_result = self.render_manager.render(gl, event, manager);
 
-        self.check_agents();
+        self.check_agents().expect_none("A component attempted to replace the current container during a render event");
 
         render_result
     }
 
-    fn check_agents(&mut self){
+    fn check_agents(&mut self) -> EventResult {
         let mut components_to_add = Vec::new();
+        let mut new_container = None;
         self.components.drain_filter(|outer_handle| {
             let mut handle = outer_handle.get_rc().borrow_mut();
             let agent = handle.get_agent();
             if agent.has_changes() {
                 agent.clear_changes();
+
+                if agent.requested_container_change() {
+                    if new_container.is_some() {
+                        print("Warning: 2 components requested a container change during the same event");
+                    }
+                    new_container = Some(agent.get_new_container());
+                }
 
                 if agent.did_request_removal() {
                     return true;
@@ -124,6 +146,8 @@ impl Layer {
         for component in components_to_add {
             self.add_component(component);
         }
+
+        new_container
     }
 
     pub fn force_render(&mut self, manager: &ContainerManager){
@@ -147,6 +171,8 @@ impl Layer {
         let mouse_move_space = agent.mouse_move_space;
         let mouse_move_in_out_space = agent.mouse_move_in_out_space;
         let mouse_move_global = agent.mouse_move_global;
+
+        let receive_updates = agent.receive_updates;
 
         let handle = OuterHandle::new(component, self.components.len());
 
@@ -214,6 +240,10 @@ impl Layer {
             self.mouse_manager.add_full_move_listener(&handle);
         }
 
+        if receive_updates {
+            self.update_manager.add_listener(&handle);
+        }
+
         self.components.push(handle);
     }
 }
@@ -237,7 +267,9 @@ pub struct LayerAgent<'a> {
 
     mouse_move_space: Option<Region>,
     mouse_move_in_out_space: Option<Region>,
-    mouse_move_global: bool
+    mouse_move_global: bool,
+
+    receive_updates: bool
 }
 
 impl<'a> LayerAgent<'a> {
@@ -261,7 +293,9 @@ impl<'a> LayerAgent<'a> {
 
             mouse_move_space: None,
             mouse_move_in_out_space: None,
-            mouse_move_global: false
+            mouse_move_global: false,
+
+            receive_updates: false
         }
     }
 
@@ -350,5 +384,9 @@ impl<'a> LayerAgent<'a> {
 
     pub fn make_mouse_move_listener(&mut self){
         self.mouse_move_global = true;
+    }
+
+    pub fn make_update_listener(&mut self){
+        self.receive_updates = true;
     }
 }

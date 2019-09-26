@@ -22,7 +22,7 @@ pub mod layer;
 
 pub use flat::*;
 
-pub trait Container {
+pub trait Container : std::fmt::Debug {
     
     fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> EventResult;
 

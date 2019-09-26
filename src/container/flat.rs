@@ -8,7 +8,6 @@ use crate::cursor::Cursor;
 use super::Container;
 use super::layer::Layer;
 
-use wasmuri_core::util::print;
 use wasmuri_events::{
     KeyDownEvent,
     KeyUpEvent,
@@ -35,38 +34,37 @@ impl FlatContainer {
     }
 }
 
-// TODO Implement the trait methods properly, this is just for the initial test
+// TODO Implement the return statements properly
+impl std::fmt::Debug for FlatContainer {
+
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "FlatContainer")
+    }
+}
 impl Container for FlatContainer {
 
     fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> EventResult {
-        self.layer.on_key_down(event, manager);
-        print("FlatContainer.on_key_down");
-        None
+        self.layer.on_key_down(event, manager)
     }
 
     fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> EventResult {
-        self.layer.on_key_up(event, manager);
-        print("FlatContainer.on_key_up");
-        None
+        self.layer.on_key_up(event, manager)
     }
 
-    // TODO Implement the mouse methods properly
-
-    fn on_mouse_click(&mut self, _event: &MouseClickEvent, _manager: &ContainerManager) -> EventResult {
-        None
+    fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> EventResult {
+        self.layer.on_mouse_click(event, manager)
     }
 
     fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) -> EventResult {
-        self.layer.on_mouse_move(event, manager);
-        None
+        self.layer.on_mouse_move(event, manager)
     }
 
-    fn on_mouse_scroll(&mut self, _event: &MouseScrollEvent, _manager: &ContainerManager) -> EventResult {
-        None
+    fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> EventResult {
+        self.layer.on_mouse_scroll(event, manager)
     }
 
-    fn on_update(&mut self, _event: &UpdateEvent, _manager: &ContainerManager) -> EventResult {
-        None
+    fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult {
+        self.layer.on_update(event, manager)
     }
 
     fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult {

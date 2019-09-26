@@ -19,6 +19,7 @@ use wasmuri_events::{
     MouseClickEvent,
     MouseMoveEvent,
     MouseScrollEvent,
+    UpdateEvent,
     RenderEvent
 };
 use web_sys::WebGlRenderingContext;
@@ -51,6 +52,10 @@ impl ComponentHandle {
     pub fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> Option<Cursor> {
         self.agent.set_rendering();
         self.component.render(gl, &mut self.agent, event, manager)
+    }
+
+    pub fn update(&mut self, event: &UpdateEvent, manager: &ContainerManager){
+        self.component.update(&mut self.agent, event, manager);
     }
 
     pub fn get_cursor(&mut self, event: &RenderEvent, manager: &ContainerManager) -> Option<Cursor> {

@@ -16,13 +16,8 @@ use web_sys::{
     WebGlRenderingContext
 };
 
-pub type EventResult = Option<Box<dyn ManagerAction>>;
+pub type EventResult = Option<Rc<RefCell<dyn Container>>>;
 pub type RenderResult = Cursor;
-
-pub trait ManagerAction {
-
-    fn execute(&mut self, manager: &mut ContainerManager);
-}
 
 pub trait ResizeListener {
 
@@ -108,9 +103,9 @@ impl ContainerManager {
 
     fn process_result(&mut self, result: EventResult){
         match result {
-            Some(mut action) => action.execute(self),
+            Some(new_container) => self.set_container_cell(new_container),
             None => {}
-        }
+        };
     }
 
     /// Gives a reference to the TextRenderer of this ContainerManager, which is inside a RefCell.
@@ -190,7 +185,9 @@ impl Listener<MouseMoveEvent> for ContainerManager {
         });
 
         // Unfortunately, offset_x and offset_y are experimental, but there is no alternative that I know of.
-        self.mouse_position = (event.mouse_event.offset_x(), event.mouse_event.offset_y());
+        let x = event.mouse_event.offset_x();
+        let y = event.mouse_event.offset_y();
+        self.mouse_position = (x, y);
     }
 }
 
@@ -269,5 +266,3 @@ impl Listener<RenderEvent> for ContainerManager {
         }
     }
 }
-
-// TODO Also create a resize event in wasmuri-events and listen for it

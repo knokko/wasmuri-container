@@ -165,6 +165,13 @@ impl RenderManager {
 
     pub fn force_render(&mut self, _manager: &ContainerManager){
         self.render_background = true;
+        for handle in &self.render_components {
+            match handle.component.upgrade() {
+                Some(cell) => {
+                    cell.borrow_mut().get_agent().request_render();
+                }, None => {}
+            };
+        }
     }
 
     pub fn on_mouse_move<'a>(&'a mut self, event: &MouseMoveEvent, manager: &'a ContainerManager){
