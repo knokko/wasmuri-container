@@ -4,6 +4,7 @@ use crate::{
 };
 
 use crate::cursor::Cursor;
+use crate::params::*;
 
 use std::cell::RefCell;
 use std::rc::{
@@ -51,35 +52,35 @@ impl ComponentHandle {
 
     pub fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> Option<Cursor> {
         self.agent.set_rendering();
-        self.component.render(gl, &mut self.agent, event, manager)
+        self.component.render(&mut RenderParams::new(gl, &mut self.agent, event, manager))
     }
 
     pub fn update(&mut self, event: &UpdateEvent, manager: &ContainerManager){
-        self.component.update(&mut self.agent, event, manager);
+        self.component.update(&mut UpdateParams::new(&mut self.agent, event, manager));
     }
 
     pub fn get_cursor(&mut self, event: &RenderEvent, manager: &ContainerManager) -> Option<Cursor> {
-        self.component.get_cursor(&mut self.agent, event, manager)
+        self.component.get_cursor(&mut CursorParams::new(&mut self.agent, event, manager))
     }
 
     pub fn key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> bool {
-        self.component.key_down(&mut self.agent, event, manager)
+        self.component.key_down(&mut KeyDownParams::new(&mut self.agent, event, manager))
     }
 
     pub fn key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> bool {
-        self.component.key_up(&mut self.agent, event, manager)
+        self.component.key_up(&mut KeyUpParams::new(&mut self.agent, event, manager))
     }
 
     pub fn mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) {
-        self.component.mouse_move(&mut self.agent, event, manager);
+        self.component.mouse_move(&mut MouseMoveParams::new(&mut self.agent, event, manager));
     }
 
     pub fn mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) {
-        self.component.mouse_click(&mut self.agent, event, manager);
+        self.component.mouse_click(&mut MouseClickParams::new(&mut self.agent, event, manager));
     }
 
     pub fn mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> bool {
-        self.component.mouse_scroll(&mut self.agent, event, manager)
+        self.component.mouse_scroll(&mut MouseScrollParams::new(&mut self.agent, event, manager))
     }
 }
 

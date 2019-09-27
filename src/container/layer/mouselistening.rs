@@ -9,8 +9,6 @@ use super::{
     Region
 };
 
-use wasmuri_core::util::print;
-
 use wasmuri_events::{
     MouseClickEvent,
     MouseMoveEvent,

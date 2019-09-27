@@ -18,7 +18,7 @@ use update::UpdateManager;
 use keylistening::KeyListenManager;
 use mouselistening::MouseManager;
 
-use wasmuri_core::util::color::Color;
+use wasmuri_core::util::Color;
 use wasmuri_core::util::print;
 
 use wasmuri_events::{

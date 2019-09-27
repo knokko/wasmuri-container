@@ -184,7 +184,7 @@ impl Listener<MouseMoveEvent> for ContainerManager {
             }, None => None
         });
 
-        // Unfortunately, offset_x and offset_y are experimental, but there is no alternative that I know of.
+        // Unfortunately, offset_x and offset_y are experimental, but there is no alternative that I know off.
         let x = event.mouse_event.offset_x();
         let y = event.mouse_event.offset_y();
         self.mouse_position = (x, y);
@@ -254,7 +254,7 @@ impl Listener<RenderEvent> for ContainerManager {
                     change_cursor = true;
                 } else {
                     let prev_cursor = self.prev_cursor.as_ref().unwrap();
-                    change_cursor = *prev_cursor == result;
+                    change_cursor = *prev_cursor != result;
                 }
 
                 if change_cursor {

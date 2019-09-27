@@ -1,52 +1,48 @@
 use crate::container::layer::*;
-use crate::ContainerManager;
 use crate::cursor::Cursor;
 
-use wasmuri_events::{
-    KeyDownEvent,
-    KeyUpEvent,
-    MouseClickEvent,
-    MouseMoveEvent,
-    MouseScrollEvent,
-    RenderEvent,
-    UpdateEvent
-};
+use wasmuri_core::util::print;
 
-use web_sys::WebGlRenderingContext;
+use crate::params::*;
 
 pub trait Component {
 
-    fn attach(&mut self, agent: &mut LayerAgent);
+    fn attach(&mut self, _agent: &mut LayerAgent);
 
-    fn key_down(&mut self, _agent: &mut ComponentAgent, _event: &KeyDownEvent, _manager: &ContainerManager) -> bool {
-        panic!("The keydown operation is not supported for this component!");
+    fn key_down(&mut self, _params: &mut KeyDownParams) -> bool {
+        print("The keydown operation is not supported for this component!");
+        false
     }
 
-    fn key_up(&mut self, _agent: &mut ComponentAgent, _event: &KeyUpEvent, _manager: &ContainerManager) -> bool {
-        panic!("The keyup operation is not supported for this component!");
+    fn key_up(&mut self, _params: &mut KeyUpParams) -> bool {
+        print("The keyup operation is not supported for this component!");
+        false
     }
 
-    fn mouse_click(&mut self, _agent: &mut ComponentAgent, _event: &MouseClickEvent, _manager: &ContainerManager){
-        panic!("The mouseclick operation is not supported for this component!");
+    fn mouse_click(&mut self, _params: &mut MouseClickParams){
+        print("The mouseclick operation is not supported for this component!");
     }
 
-    fn mouse_move(&mut self, _agent: &mut ComponentAgent, _event: &MouseMoveEvent, _manager: &ContainerManager){
-        panic!("The mouseclick operation is not supported for this component!");
+    fn mouse_move(&mut self, _params: &mut MouseMoveParams){
+        print("The mouseclick operation is not supported for this component!");
     }
 
-    fn mouse_scroll(&mut self, _agent: &mut ComponentAgent, _event: &MouseScrollEvent, _manager: &ContainerManager) -> bool {
-        panic!("The mousescroll operation is not supported for this component!");
+    fn mouse_scroll(&mut self, _params: &mut MouseScrollParams) -> bool {
+        print("The mousescroll operation is not supported for this component!");
+        false
     }
 
-    fn render(&mut self, _gl: &WebGlRenderingContext, _agent: &mut ComponentAgent, _event: &RenderEvent, _manager: &ContainerManager) -> Option<Cursor> {
-        panic!("The render operation is not supported for this component!");
+    fn render(&mut self, _params: &mut RenderParams) -> Option<Cursor> {
+        print("The render operation is not supported for this component!");
+        None
     }
 
-    fn get_cursor(&mut self, _agent: &mut ComponentAgent, _event: &RenderEvent, _manager: &ContainerManager) -> Option<Cursor> {
-        panic!("The get_cursor operation is not supported for this component!");
+    fn get_cursor(&mut self, _params: &mut CursorParams) -> Option<Cursor> {
+        print("The get_cursor operation is not supported for this component!");
+        None
     }
 
-    fn update(&mut self, _agent: &mut ComponentAgent, _event: &UpdateEvent, _manager: &ContainerManager){
-        panic!("The update operation is not supported for this component!");
+    fn update(&mut self, _params: &mut UpdateParams){
+        print("The update operation is not supported for this component!");
     }
 }
