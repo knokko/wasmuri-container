@@ -29,7 +29,9 @@ struct FullHandle {
     priority: i8
 }
 
-type ClickHandle = RegionHandle;
+type AreaClickHandle = RegionHandle;
+
+type FullClickHandle = Weak<RefCell<ComponentHandle>>;
 
 type AreaScrollHandle = RegionHandle;
 
@@ -43,7 +45,8 @@ type InOutMoveHandle = RegionHandle;
 
 pub struct MouseManager {
 
-    click_listeners: Vec<ClickHandle>,
+    area_click_listeners: Vec<AreaClickHandle>,
+    full_click_listeners: Vec<FullClickHandle>,
 
     area_scroll_listeners: Vec<AreaScrollHandle>,
     full_scroll_listeners: Vec<FullScrollHandle>,
@@ -57,7 +60,8 @@ impl MouseManager {
 
     pub fn new() -> MouseManager {
         MouseManager {
-            click_listeners: Vec::new(),
+            area_click_listeners: Vec::new(),
+            full_click_listeners: Vec::new(),
 
             area_scroll_listeners: Vec::new(),
             full_scroll_listeners: Vec::new(),
@@ -69,7 +73,7 @@ impl MouseManager {
     }
 
     pub fn can_claim_click_space(&self, region: Region) -> bool {
-        for handle in &self.click_listeners {
+        for handle in &self.area_click_listeners {
             if handle.region.intersects_with(&region) {
                 return false;
             }
@@ -104,11 +108,15 @@ impl MouseManager {
     }
 
     /// Should only be used after can_claim_click_space confirmed that this is allowed
-    pub fn add_click_listener(&mut self, listener: &OuterHandle, region: Region){
-        self.click_listeners.push(ClickHandle {
+    pub fn add_click_space_listener(&mut self, listener: &OuterHandle, region: Region){
+        self.area_click_listeners.push(AreaClickHandle {
             component: listener.create_weak(),
             region
         });
+    }
+
+    pub fn add_full_click_listener(&mut self, listener: &OuterHandle){
+        self.full_click_listeners.push(listener.create_weak());
     }
 
     pub fn add_full_scroll_listener(&mut self, listener: &OuterHandle, priority: i8){
@@ -186,12 +194,21 @@ impl MouseManager {
 
         let mouse_pos = manager.get_mouse_position();
 
-        self.click_listeners.drain_filter(|handle| {
+        self.area_click_listeners.drain_filter(|handle| {
             match handle.component.upgrade() {
                 Some(component_cell) => {
                     if handle.region.is_inside(mouse_pos) {
                         component_cell.borrow_mut().mouse_click(event, manager);
                     }
+                    false
+                }, None => true
+            }
+        });
+
+        self.full_click_listeners.drain_filter(|handle| {
+            match handle.upgrade() {
+                Some(component_cell) => {
+                    component_cell.borrow_mut().mouse_click(event, manager);
                     false
                 }, None => true
             }

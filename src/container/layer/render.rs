@@ -16,7 +16,7 @@ use super::{
     Region
 };
 
-use wasmuri_core::util::Color;
+use wasmuri_core::color::Color;
 use wasmuri_events::{
     MouseMoveEvent,
     RenderEvent

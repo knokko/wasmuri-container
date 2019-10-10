@@ -1,6 +1,5 @@
 use crate::container::layer::*;
 use crate::ContainerManager;
-use crate::cursor::Cursor;
 
 use wasmuri_events::{
     KeyDownEvent,

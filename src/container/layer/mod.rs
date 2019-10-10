@@ -5,7 +5,6 @@ use crate::{
 use crate::manager::EventResult;
 use crate::cursor::Cursor;
 
-mod region;
 mod handle;
 
 mod update;
@@ -18,25 +17,16 @@ use update::UpdateManager;
 use keylistening::KeyListenManager;
 use mouselistening::MouseManager;
 
-use wasmuri_core::util::Color;
-use wasmuri_core::util::print;
+use wasmuri_core::color::Color;
+use wasmuri_core::util::*;
 
-use wasmuri_events::{
-    MouseClickEvent,
-    MouseMoveEvent,
-    MouseScrollEvent,
-    KeyDownEvent,
-    KeyUpEvent,
-    UpdateEvent,
-    RenderEvent
-};
+use wasmuri_events::*;
 
 use web_sys::WebGlRenderingContext;
 
 mod agent;
 
 pub use agent::*;
-pub use region::Region;
 pub use handle::{
     ComponentHandle,
     OuterHandle
@@ -166,6 +156,7 @@ impl Layer {
         let key_up_priority = agent.key_up_priority;
 
         let mouse_click_space = agent.mouse_click_space;
+        let mouse_click_global = agent.mouse_click_global;
         let mouse_scroll_space = agent.mouse_scroll_space;
         let mouse_scroll_priority = agent.mouse_scroll_priority;
         let mouse_move_space = agent.mouse_move_space;
@@ -208,9 +199,13 @@ impl Layer {
 
         match mouse_click_space {
             Some(space) => {
-                self.mouse_manager.add_click_listener(&handle, space);
+                self.mouse_manager.add_click_space_listener(&handle, space);
             }, None => {}
         };
+        
+        if mouse_click_global {
+            self.mouse_manager.add_full_click_listener(&handle);
+        }
 
         match mouse_scroll_space {
             Some(space) => {
@@ -261,6 +256,7 @@ pub struct LayerAgent<'a> {
     key_up_priority: Option<i8>,
 
     mouse_click_space: Option<Region>,
+    mouse_click_global: bool,
 
     mouse_scroll_space: Option<Region>,
     mouse_scroll_priority: Option<i8>,
@@ -287,6 +283,7 @@ impl<'a> LayerAgent<'a> {
             key_up_priority: None,
 
             mouse_click_space: None,
+            mouse_click_global: false,
 
             mouse_scroll_space: None,
             mouse_scroll_priority: None,
@@ -384,6 +381,10 @@ impl<'a> LayerAgent<'a> {
 
     pub fn make_mouse_move_listener(&mut self){
         self.mouse_move_global = true;
+    }
+
+    pub fn make_mouse_click_listener(&mut self){
+        self.mouse_click_global = true;
     }
 
     pub fn make_update_listener(&mut self){
