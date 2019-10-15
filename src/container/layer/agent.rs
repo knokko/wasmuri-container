@@ -14,7 +14,7 @@ pub struct ComponentAgent {
     requested_render: bool,
     requested_removal: bool,
 
-    components_to_add: Vec<Box<dyn Component>>,
+    components_to_add: Vec<Rc<RefCell<dyn Component>>>,
 
     new_container: Option<Rc<RefCell<dyn Container>>>,
 
@@ -56,7 +56,7 @@ impl ComponentAgent {
     }
 
     /// Adds the other component as soon as possible
-    pub fn add_component(&mut self, component: Box<dyn Component>){
+    pub fn add_component(&mut self, component: Rc<RefCell<dyn Component>>){
         self.components_to_add.push(component);
         self.has_changes = true;
     }
@@ -77,7 +77,7 @@ impl ComponentAgent {
     }
 
     /// Gives a mutable reference to the collection of all components passed to this agent by the remove_other_component method
-    pub fn get_components_to_add(&mut self) -> &mut Vec<Box<dyn Component>> {
+    pub fn get_components_to_add(&mut self) -> &mut Vec<Rc<RefCell<dyn Component>>> {
         &mut self.components_to_add
     }
 

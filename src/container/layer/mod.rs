@@ -17,6 +17,9 @@ use update::UpdateManager;
 use keylistening::KeyListenManager;
 use mouselistening::MouseManager;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use wasmuri_core::color::Color;
 use wasmuri_core::util::*;
 
@@ -144,9 +147,9 @@ impl Layer {
         self.render_manager.force_render(manager);
     }
 
-    pub fn add_component(&mut self, mut component: Box<dyn Component>){
+    pub fn add_component(&mut self, component: Rc<RefCell<dyn Component>>) {
         let mut agent = LayerAgent::new(self);
-        component.attach(&mut agent);
+        component.borrow_mut().attach(&mut agent);
 
         let render_handle = agent.render_handle;
 
@@ -165,7 +168,7 @@ impl Layer {
 
         let receive_updates = agent.receive_updates;
 
-        let handle = OuterHandle::new(component, self.components.len());
+        let handle = OuterHandle::new(component);
 
         match render_handle {
             Some(render_handle) => {
