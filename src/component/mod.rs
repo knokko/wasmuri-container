@@ -1,6 +1,9 @@
 use crate::container::layer::*;
 use crate::cursor::Cursor;
 
+use std::cell::RefCell;
+use std::rc::Weak;
+
 use wasmuri_core::util::print;
 
 use crate::params::*;
@@ -8,6 +11,8 @@ use crate::params::*;
 pub trait Component {
 
     fn attach(&mut self, _agent: &mut LayerAgent);
+
+    fn set_agent(&mut self, _agent: Weak<RefCell<ComponentAgent>>);
 
     fn key_down(&mut self, _params: &mut KeyDownParams) -> bool {
         print("The keydown operation is not supported for this component!");

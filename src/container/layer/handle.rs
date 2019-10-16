@@ -6,11 +6,8 @@ use crate::{
 use crate::cursor::Cursor;
 use crate::params::*;
 
-use std::cell::RefCell;
-use std::rc::{
-    Rc,
-    Weak
-};
+use std::cell::*;
+use std::rc::*;
 
 use super::ComponentAgent;
 
@@ -29,16 +26,18 @@ pub struct ComponentHandle {
 
     component: Rc<RefCell<dyn Component>>,
 
-    agent: ComponentAgent,
+    agent: Rc<RefCell<ComponentAgent>>,
 
 }
 
 impl ComponentHandle {
 
     pub fn new(component: Rc<RefCell<dyn Component>>) -> ComponentHandle {
+        let agent = Rc::new(RefCell::new(ComponentAgent::new()));
+        component.borrow_mut().set_agent(Rc::downgrade(&agent));
         ComponentHandle {
             component,
-            agent: ComponentAgent::new()
+            agent
         }
     }
 
@@ -46,41 +45,41 @@ impl ComponentHandle {
         &self.component
     }
 
-    pub fn get_agent(&mut self) -> &mut ComponentAgent {
-        &mut self.agent
+    pub fn get_agent(&mut self) -> RefMut<ComponentAgent> {
+        self.agent.borrow_mut()
     }
 
     pub fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> Option<Cursor> {
-        self.agent.set_rendering();
-        self.component.borrow_mut().render(&mut RenderParams::new(gl, &mut self.agent, event, manager))
+        self.agent.borrow_mut().set_rendering();
+        self.component.borrow_mut().render(&mut RenderParams::new(gl, event, manager))
     }
 
     pub fn update(&mut self, event: &UpdateEvent, manager: &ContainerManager){
-        self.component.borrow_mut().update(&mut UpdateParams::new(&mut self.agent, event, manager));
+        self.component.borrow_mut().update(&mut UpdateParams::new(event, manager));
     }
 
     pub fn get_cursor(&mut self, event: &RenderEvent, manager: &ContainerManager) -> Option<Cursor> {
-        self.component.borrow_mut().get_cursor(&mut CursorParams::new(&mut self.agent, event, manager))
+        self.component.borrow_mut().get_cursor(&mut CursorParams::new(event, manager))
     }
 
     pub fn key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> bool {
-        self.component.borrow_mut().key_down(&mut KeyDownParams::new(&mut self.agent, event, manager))
+        self.component.borrow_mut().key_down(&mut KeyDownParams::new(event, manager))
     }
 
     pub fn key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> bool {
-        self.component.borrow_mut().key_up(&mut KeyUpParams::new(&mut self.agent, event, manager))
+        self.component.borrow_mut().key_up(&mut KeyUpParams::new(event, manager))
     }
 
     pub fn mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) {
-        self.component.borrow_mut().mouse_move(&mut MouseMoveParams::new(&mut self.agent, event, manager));
+        self.component.borrow_mut().mouse_move(&mut MouseMoveParams::new(event, manager));
     }
 
     pub fn mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) {
-        self.component.borrow_mut().mouse_click(&mut MouseClickParams::new(&mut self.agent, event, manager));
+        self.component.borrow_mut().mouse_click(&mut MouseClickParams::new(event, manager));
     }
 
     pub fn mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> bool {
-        self.component.borrow_mut().mouse_scroll(&mut MouseScrollParams::new(&mut self.agent, event, manager))
+        self.component.borrow_mut().mouse_scroll(&mut MouseScrollParams::new(event, manager))
     }
 }
 

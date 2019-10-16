@@ -1,4 +1,3 @@
-use crate::container::layer::*;
 use crate::ContainerManager;
 
 use wasmuri_events::{
@@ -15,16 +14,14 @@ use web_sys::WebGlRenderingContext;
 
 pub struct KeyDownParams<'a> {
 
-    pub agent: &'a mut ComponentAgent, 
     pub event: &'a KeyDownEvent, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> KeyDownParams<'a> {
 
-    pub fn new(agent: &'a mut ComponentAgent, event: &'a KeyDownEvent, manager: &'a ContainerManager) -> KeyDownParams<'a> {
+    pub fn new(event: &'a KeyDownEvent, manager: &'a ContainerManager) -> KeyDownParams<'a> {
         KeyDownParams {
-            agent,
             event,
             manager
         }
@@ -33,16 +30,14 @@ impl<'a> KeyDownParams<'a> {
 
 pub struct KeyUpParams<'a> {
 
-    pub agent: &'a mut ComponentAgent, 
     pub event: &'a KeyUpEvent, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> KeyUpParams<'a> {
 
-    pub fn new(agent: &'a mut ComponentAgent, event: &'a KeyUpEvent, manager: &'a ContainerManager) -> KeyUpParams<'a> {
+    pub fn new(event: &'a KeyUpEvent, manager: &'a ContainerManager) -> KeyUpParams<'a> {
         KeyUpParams {
-            agent,
             event,
             manager
         }
@@ -51,16 +46,14 @@ impl<'a> KeyUpParams<'a> {
 
 pub struct MouseClickParams<'a> {
 
-    pub agent: &'a mut ComponentAgent, 
     pub event: &'a MouseClickEvent, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> MouseClickParams<'a> {
 
-    pub fn new(agent: &'a mut ComponentAgent, event: &'a MouseClickEvent, manager: &'a ContainerManager) -> MouseClickParams<'a> {
+    pub fn new(event: &'a MouseClickEvent, manager: &'a ContainerManager) -> MouseClickParams<'a> {
         MouseClickParams {
-            agent,
             event,
             manager
         }
@@ -69,16 +62,14 @@ impl<'a> MouseClickParams<'a> {
 
 pub struct MouseMoveParams<'a> {
 
-    pub agent: &'a mut ComponentAgent, 
     pub event: &'a MouseMoveEvent, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> MouseMoveParams<'a> {
 
-    pub fn new(agent: &'a mut ComponentAgent, event: &'a MouseMoveEvent, manager: &'a ContainerManager) -> MouseMoveParams<'a> {
+    pub fn new(event: &'a MouseMoveEvent, manager: &'a ContainerManager) -> MouseMoveParams<'a> {
         MouseMoveParams {
-            agent,
             event,
             manager
         }
@@ -87,16 +78,14 @@ impl<'a> MouseMoveParams<'a> {
 
 pub struct MouseScrollParams<'a> {
 
-    pub agent: &'a mut ComponentAgent, 
     pub event: &'a MouseScrollEvent, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> MouseScrollParams<'a> {
 
-    pub fn new(agent: &'a mut ComponentAgent, event: &'a MouseScrollEvent, manager: &'a ContainerManager) -> MouseScrollParams<'a> {
+    pub fn new(event: &'a MouseScrollEvent, manager: &'a ContainerManager) -> MouseScrollParams<'a> {
         MouseScrollParams {
-            agent,
             event,
             manager
         }
@@ -106,17 +95,15 @@ impl<'a> MouseScrollParams<'a> {
 pub struct RenderParams<'a> {
 
     pub gl: &'a WebGlRenderingContext, 
-    pub agent: &'a mut ComponentAgent, 
     pub event: &'a RenderEvent, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> RenderParams<'a> {
 
-    pub fn new(gl: &'a WebGlRenderingContext, agent: &'a mut ComponentAgent, event: &'a RenderEvent, manager: &'a ContainerManager) -> RenderParams<'a> {
+    pub fn new(gl: &'a WebGlRenderingContext, event: &'a RenderEvent, manager: &'a ContainerManager) -> RenderParams<'a> {
         RenderParams {
             gl,
-            agent,
             event,
             manager
         }
@@ -125,16 +112,14 @@ impl<'a> RenderParams<'a> {
 
 pub struct CursorParams<'a> {
 
-    pub agent: &'a mut ComponentAgent, 
     pub event: &'a RenderEvent, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> CursorParams<'a> {
 
-    pub fn new(agent: &'a mut ComponentAgent, event: &'a RenderEvent, manager: &'a ContainerManager) -> CursorParams<'a> {
+    pub fn new(event: &'a RenderEvent, manager: &'a ContainerManager) -> CursorParams<'a> {
         CursorParams {
-            agent,
             event,
             manager
         }
@@ -143,16 +128,14 @@ impl<'a> CursorParams<'a> {
 
 pub struct UpdateParams<'a> {
 
-    pub agent: &'a mut ComponentAgent, 
     pub event: &'a UpdateEvent, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> UpdateParams<'a> {
 
-    pub fn new(agent: &'a mut ComponentAgent, event: &'a UpdateEvent, manager: &'a ContainerManager) -> UpdateParams<'a> {
+    pub fn new(event: &'a UpdateEvent, manager: &'a ContainerManager) -> UpdateParams<'a> {
         UpdateParams {
-            agent,
             event,
             manager
         }

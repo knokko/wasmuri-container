@@ -111,7 +111,7 @@ impl Layer {
         let mut new_container = None;
         self.components.drain_filter(|outer_handle| {
             let mut handle = outer_handle.get_rc().borrow_mut();
-            let agent = handle.get_agent();
+            let mut agent = handle.get_agent();
             if agent.has_changes() {
                 agent.clear_changes();
 
