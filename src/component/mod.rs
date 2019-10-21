@@ -14,6 +14,8 @@ pub trait Component {
 
     fn set_agent(&mut self, _agent: Weak<RefCell<ComponentAgent>>);
 
+    fn get_agent(&self) -> Weak<RefCell<ComponentAgent>>;
+
     fn key_down(&mut self, _params: &mut KeyDownParams) -> bool {
         print("The keydown operation is not supported for this component!");
         false
