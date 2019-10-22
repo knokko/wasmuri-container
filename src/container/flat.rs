@@ -5,6 +5,9 @@ use crate::{
 };
 use crate::cursor::Cursor;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use super::Container;
 use super::layer::Layer;
 
@@ -31,6 +34,10 @@ impl FlatContainer {
         FlatContainer {
             layer
         }
+    }
+
+    pub fn celled(layer: Layer) -> Rc<RefCell<FlatContainer>> {
+        Rc::new(RefCell::new(Self::new(layer)))
     }
 }
 
