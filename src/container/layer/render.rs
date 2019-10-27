@@ -125,7 +125,9 @@ impl RenderManager {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
                     let mut component_handle = component_cell.borrow_mut();
-                    let requested_render = component_handle.get_agent().upgrade().expect("Component agent shouldn't have been dropped").borrow().did_request_render();
+                    let agent_holder = component_handle.get_agent().upgrade().expect("Component agent shouldn't have been dropped");
+                    let mut agent = agent_holder.borrow_mut();
+                    let requested_render = agent.did_request_render();
                     if requested_render {
 
                         if previous_render_phase != handle.phase {
@@ -138,6 +140,8 @@ impl RenderManager {
                             previous_render_phase = handle.phase;
                         }
 
+                        agent.set_rendering();
+                        drop(agent);
                         let local_cursor = component_handle.render(&mut RenderParams::new(gl, event, manager));
                         if handle.region.is_inside(mouse_position) {
                             cursor_result = local_cursor;
