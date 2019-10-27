@@ -1,13 +1,10 @@
 use std::cell::RefCell;
 use std::rc::Weak;
 
-use crate::ContainerManager;
+use crate::*;
+use crate::params::*;
 
-use super::{
-    ComponentHandle,
-    OuterHandle,
-    Region
-};
+use super::Region;
 
 use wasmuri_events::{
     MouseClickEvent,
@@ -17,21 +14,21 @@ use wasmuri_events::{
 
 struct RegionHandle {
 
-    component: Weak<RefCell<ComponentHandle>>,
+    behavior: Weak<RefCell<dyn ComponentBehavior>>,
 
     region: Region
 }
 
 struct FullHandle {
 
-    component: Weak<RefCell<ComponentHandle>>,
+    behavior: Weak<RefCell<dyn ComponentBehavior>>,
 
     priority: i8
 }
 
 type AreaClickHandle = RegionHandle;
 
-type FullClickHandle = Weak<RefCell<ComponentHandle>>;
+type FullClickHandle = Weak<RefCell<dyn ComponentBehavior>>;
 
 type AreaScrollHandle = RegionHandle;
 
@@ -39,7 +36,7 @@ type FullScrollHandle = FullHandle;
 
 type AreaMoveHandle = RegionHandle;
 
-type FullMoveHandle = Weak<RefCell<ComponentHandle>>;
+type FullMoveHandle = Weak<RefCell<dyn ComponentBehavior>>;
 
 type InOutMoveHandle = RegionHandle;
 
@@ -93,48 +90,48 @@ impl MouseManager {
     }
 
     /// Should only be used after can_claim_scroll_space confirmed that this is allowed
-    pub fn add_scroll_space_listener(&mut self, listener: &OuterHandle, region: Region){
+    pub fn add_scroll_space_listener(&mut self, behavior: Weak<RefCell<dyn ComponentBehavior>>, region: Region){
         self.area_scroll_listeners.push(AreaScrollHandle {
-            component: listener.create_weak(),
+            behavior,
             region
         });
     }
 
-    pub fn add_move_space_listener(&mut self, listener: &OuterHandle, region: Region){
+    pub fn add_move_space_listener(&mut self, behavior: Weak<RefCell<dyn ComponentBehavior>>, region: Region){
         self.area_move_listeners.push(AreaMoveHandle {
-            component: listener.create_weak(),
+            behavior,
             region
         });
     }
 
     /// Should only be used after can_claim_click_space confirmed that this is allowed
-    pub fn add_click_space_listener(&mut self, listener: &OuterHandle, region: Region){
+    pub fn add_click_space_listener(&mut self, behavior: Weak<RefCell<dyn ComponentBehavior>>, region: Region){
         self.area_click_listeners.push(AreaClickHandle {
-            component: listener.create_weak(),
+            behavior,
             region
         });
     }
 
-    pub fn add_full_click_listener(&mut self, listener: &OuterHandle){
-        self.full_click_listeners.push(listener.create_weak());
+    pub fn add_full_click_listener(&mut self, behavior: Weak<RefCell<dyn ComponentBehavior>>){
+        self.full_click_listeners.push(behavior);
     }
 
-    pub fn add_full_scroll_listener(&mut self, listener: &OuterHandle, priority: i8){
-        Self::add_full_listener(&mut self.full_scroll_listeners, listener, priority);
+    pub fn add_full_scroll_listener(&mut self, behavior: Weak<RefCell<dyn ComponentBehavior>>, priority: i8){
+        Self::add_full_listener(&mut self.full_scroll_listeners, behavior, priority);
     }
 
-    pub fn add_full_move_listener(&mut self, listener: &OuterHandle){
-        self.full_move_listeners.push(listener.create_weak());
+    pub fn add_full_move_listener(&mut self, behavior: Weak<RefCell<dyn ComponentBehavior>>){
+        self.full_move_listeners.push(behavior);
     }
 
-    pub fn add_in_out_move_listener(&mut self, listener: &OuterHandle, region: Region){
+    pub fn add_in_out_move_listener(&mut self, behavior: Weak<RefCell<dyn ComponentBehavior>>, region: Region){
         self.in_out_move_listeners.push(InOutMoveHandle {
-            component: listener.create_weak(),
+            behavior,
             region
         });
     }
 
-    fn add_full_listener(list: &mut Vec<FullHandle>, listener: &OuterHandle, priority: i8){
+    fn add_full_listener(list: &mut Vec<FullHandle>, behavior: Weak<RefCell<dyn ComponentBehavior>>, priority: i8){
         let maybe_index = list.binary_search_by(|existing| {
 
             // Intentionally INVERT the order so that the higher priorities come first
@@ -147,7 +144,7 @@ impl MouseManager {
             Err(the_index) => index = the_index
         };
         list.insert(index, FullHandle {
-            component: listener.create_weak(),
+            behavior,
             priority
         });
     }
@@ -159,10 +156,10 @@ impl MouseManager {
         let next_mouse_pos = manager.to_gl_coords(pixel_next_mouse_pos);
 
         self.in_out_move_listeners.drain_filter(|handle| {
-            match handle.component.upgrade() {
+            match handle.behavior.upgrade() {
                 Some(component_cell) => {
                     if handle.region.is_inside(prev_mouse_pos) != handle.region.is_inside(next_mouse_pos) {
-                        component_cell.borrow_mut().mouse_move(event, manager);
+                        component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(event, manager));
                     }
                     false
                 }, None => true
@@ -170,10 +167,10 @@ impl MouseManager {
         });
 
         self.area_move_listeners.drain_filter(|handle| {
-            match handle.component.upgrade() {
+            match handle.behavior.upgrade() {
                 Some(component_cell) => {
                     if handle.region.is_inside(prev_mouse_pos) || handle.region.is_inside(next_mouse_pos) {
-                        component_cell.borrow_mut().mouse_move(event, manager);
+                        component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(event, manager));
                     }
                     false
                 }, None => true
@@ -183,7 +180,7 @@ impl MouseManager {
         self.full_move_listeners.drain_filter(|handle| {
             match handle.upgrade() {
                 Some(component_cell) => {
-                    component_cell.borrow_mut().mouse_move(event, manager);
+                    component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(event, manager));
                     false
                 }, None => true
             }
@@ -195,10 +192,10 @@ impl MouseManager {
         let mouse_pos = manager.get_mouse_position();
 
         self.area_click_listeners.drain_filter(|handle| {
-            match handle.component.upgrade() {
+            match handle.behavior.upgrade() {
                 Some(component_cell) => {
                     if handle.region.is_inside(mouse_pos) {
-                        component_cell.borrow_mut().mouse_click(event, manager);
+                        component_cell.borrow_mut().mouse_click(&mut MouseClickParams::new(event, manager));
                     }
                     false
                 }, None => true
@@ -208,7 +205,7 @@ impl MouseManager {
         self.full_click_listeners.drain_filter(|handle| {
             match handle.upgrade() {
                 Some(component_cell) => {
-                    component_cell.borrow_mut().mouse_click(event, manager);
+                    component_cell.borrow_mut().mouse_click(&mut MouseClickParams::new(event, manager));
                     false
                 }, None => true
             }
@@ -222,10 +219,10 @@ impl MouseManager {
         let mut consumed = false;
 
         self.area_scroll_listeners.drain_filter(|handle| {
-            match handle.component.upgrade() {
+            match handle.behavior.upgrade() {
                 Some(component_cell) => {
                     if !consumed && handle.region.is_inside(mouse_pos){
-                        consumed = component_cell.borrow_mut().mouse_scroll(event, manager);
+                        consumed = component_cell.borrow_mut().mouse_scroll(&mut MouseScrollParams::new(event, manager));
                     }
                     false
                 }, None => true
@@ -234,10 +231,10 @@ impl MouseManager {
 
         if !consumed {
             self.full_scroll_listeners.drain_filter(|handle| {
-                match handle.component.upgrade() {
+                match handle.behavior.upgrade() {
                     Some(component_cell) => {
                         if !consumed {
-                            consumed = component_cell.borrow_mut().mouse_scroll(event, manager);
+                            consumed = component_cell.borrow_mut().mouse_scroll(&mut MouseScrollParams::new(event, manager));
                         }
                         false
                     }, None => true

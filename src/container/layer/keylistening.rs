@@ -1,13 +1,9 @@
-use crate::ContainerManager;
+use crate::*;
+use crate::params::*;
+use crate::container::layer::Region;
 
 use std::cell::RefCell;
 use std::rc::Weak;
-
-use super::{
-    ComponentHandle,
-    Region,
-    OuterHandle
-};
 
 use wasmuri_events::{
     KeyDownEvent,
@@ -16,14 +12,14 @@ use wasmuri_events::{
 
 struct KeyListenHandle { 
 
-    component: Weak<RefCell<ComponentHandle>>,
+    behavior: Weak<RefCell<dyn ComponentBehavior>>,
 
     priority: i8
 }
 
 struct HoverListenHandle {
 
-    component: Weak<RefCell<ComponentHandle>>,
+    behavior: Weak<RefCell<dyn ComponentBehavior>>,
 
     region: Region
 }
@@ -39,15 +35,15 @@ pub struct KeyListenManager {
 
 trait EventProcessor<T> {
 
-    fn process(&self, handle: &mut ComponentHandle, event: &T, manager: &ContainerManager) -> bool;
+    fn process(&self, handle: &mut dyn ComponentBehavior, event: &T, manager: &ContainerManager) -> bool;
 }
 
 struct KeyDownProcessor {}
 
 impl EventProcessor<KeyDownEvent> for KeyDownProcessor {
 
-    fn process(&self, handle: &mut ComponentHandle, event: &KeyDownEvent, manager: &ContainerManager) -> bool {
-        handle.key_down(event, manager)
+    fn process(&self, handle: &mut dyn ComponentBehavior, event: &KeyDownEvent, manager: &ContainerManager) -> bool {
+        handle.key_down(&mut KeyDownParams::new(event, manager))
     }
 }
 
@@ -55,8 +51,8 @@ struct KeyUpProcessor {}
 
 impl EventProcessor<KeyUpEvent> for KeyUpProcessor {
 
-    fn process(&self, handle: &mut ComponentHandle, event: &KeyUpEvent, manager: &ContainerManager) -> bool {
-        handle.key_up(event, manager)
+    fn process(&self, handle: &mut dyn ComponentBehavior, event: &KeyUpEvent, manager: &ContainerManager) -> bool {
+        handle.key_up(&mut KeyUpParams::new(event, manager))
     }
 }
 
@@ -93,30 +89,30 @@ impl KeyListenManager {
     }
 
     /// Should only be used after can_claim_down confirmed that the given region is available
-    pub fn add_region_key_down_listener(&mut self, listener: &OuterHandle, region: Region){
+    pub fn add_region_key_down_listener(&mut self, behavior: Weak<RefCell<dyn ComponentBehavior>>, region: Region){
         self.hover_down_listeners.push(HoverListenHandle {
-            component: listener.create_weak(),
+            behavior,
             region
         });
     }
 
     /// Should only be used after can_claim_up confirmed that the given region is available
-    pub fn add_region_key_up_listener(&mut self, listener: &OuterHandle, region: Region){
+    pub fn add_region_key_up_listener(&mut self, behavior: Weak<RefCell<dyn ComponentBehavior>>, region: Region){
         self.hover_up_listeners.push(HoverListenHandle {
-            component: listener.create_weak(),
+            behavior,
             region
         });
     }
 
-    pub fn add_global_key_down_listener(&mut self, listener: &OuterHandle, priority: i8){
-        Self::add_global_key_listener(&mut self.full_down_listeners, listener, priority);
+    pub fn add_global_key_down_listener(&mut self, behavior: Weak<RefCell<dyn ComponentBehavior>>, priority: i8){
+        Self::add_global_key_listener(&mut self.full_down_listeners, behavior, priority);
     }
 
-    pub fn add_global_key_up_listener(&mut self, listener: &OuterHandle, priority: i8){
-        Self::add_global_key_listener(&mut self.full_up_listeners, listener, priority);
+    pub fn add_global_key_up_listener(&mut self, behavior: Weak<RefCell<dyn ComponentBehavior>>, priority: i8){
+        Self::add_global_key_listener(&mut self.full_up_listeners, behavior, priority);
     }
 
-    fn add_global_key_listener(list: &mut Vec<KeyListenHandle>, listener: &OuterHandle, priority: i8){
+    fn add_global_key_listener(list: &mut Vec<KeyListenHandle>, behavior: Weak<RefCell<dyn ComponentBehavior>>, priority: i8){
         let maybe_index = list.binary_search_by(|existing| {
 
             // Intentionally INVERT the order so that the higher priorities come first
@@ -129,7 +125,7 @@ impl KeyListenManager {
             Err(the_index) => index = the_index
         };
         list.insert(index, KeyListenHandle {
-            component: listener.create_weak(),
+            behavior,
             priority
         });
     }
@@ -148,11 +144,11 @@ impl KeyListenManager {
         // The key listeners with a location have priority over those without bound location
         let mut consumed = false;
         hover_listeners.drain_filter(|handle| {
-            match handle.component.upgrade() {
+            match handle.behavior.upgrade() {
                 Some(component_cell) => {
                     if !consumed && handle.region.is_inside(mouse_pos) {
                         let mut component_handle = component_cell.borrow_mut();
-                        consumed = processor.process(&mut component_handle, event, manager);
+                        consumed = processor.process(&mut *component_handle, event, manager);
                     }
                     false
                 }, None => true
@@ -162,11 +158,11 @@ impl KeyListenManager {
         // If none of the bound key listeners consumed the event, it will be passed to the full key listeners
         if !consumed {
             full_listeners.drain_filter(|handle| {
-                match handle.component.upgrade() {
+                match handle.behavior.upgrade() {
                     Some(component_cell) => {
                         if !consumed {
                             let mut component_handle = component_cell.borrow_mut();
-                            consumed = processor.process(&mut component_handle, event, manager);
+                            consumed = processor.process(&mut *component_handle, event, manager);
                         }
                         false
                     }, None => true

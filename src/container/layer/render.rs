@@ -1,5 +1,5 @@
-use crate::ContainerManager;
-use crate::cursor::Cursor;
+use crate::*;
+use crate::params::*;
 
 use std::cell::RefCell;
 use std::cmp::{
@@ -10,11 +10,7 @@ use std::cmp::{
 };
 use std::rc::Weak;
 
-use super::{
-    ComponentHandle,
-    OuterHandle,
-    Region
-};
+use super::Region;
 
 use wasmuri_core::color::Color;
 use wasmuri_events::{
@@ -44,7 +40,7 @@ pub enum RenderPhase {
 
 struct RenderHandle {
     
-    component: Weak<RefCell<ComponentHandle>>,
+    behavior: Weak<RefCell<dyn ComponentBehavior>>,
 
     region: Region,
 
@@ -54,9 +50,9 @@ struct RenderHandle {
 
 impl RenderHandle {
     
-    fn new(component: &OuterHandle, region: Region, trigger: RenderTrigger, phase: RenderPhase) -> RenderHandle {
+    fn new(behavior: Weak<RefCell<dyn ComponentBehavior>>, region: Region, trigger: RenderTrigger, phase: RenderPhase) -> RenderHandle {
         RenderHandle {
-            component: component.create_weak(),
+            behavior,
             region,
             trigger,
             phase,
@@ -83,7 +79,7 @@ impl RenderManager {
     }
 
     /// Should only be called after can_claim confirms that the region can be claimed!
-    pub fn claim_space(&mut self, region: Region, trigger: RenderTrigger, phase: RenderPhase, component: &OuterHandle) {
+    pub fn claim_space(&mut self, region: Region, trigger: RenderTrigger, phase: RenderPhase, behavior: Weak<RefCell<dyn ComponentBehavior>>) {
 
         let maybe_index = self.render_components.binary_search_by(|existing| {
             existing.phase.cmp(&phase)
@@ -93,7 +89,7 @@ impl RenderManager {
             Ok(the_index) => index = the_index,
             Err(the_index) => index = the_index
         };
-        self.render_components.insert(index, RenderHandle::new(component, region, trigger, phase));
+        self.render_components.insert(index, RenderHandle::new(behavior, region, trigger, phase));
     }
 
     pub fn can_claim(&self, region: Region) -> bool {
@@ -126,10 +122,10 @@ impl RenderManager {
         let mut previous_render_phase = RenderPhase::Start;
 
         self.render_components.drain_filter(|handle| {
-            match handle.component.upgrade() {
+            match handle.behavior.upgrade() {
                 Some(component_cell) => {
                     let mut component_handle = component_cell.borrow_mut();
-                    let requested_render = component_handle.get_agent().did_request_render();
+                    let requested_render = component_handle.get_agent().upgrade().expect("Component agent shouldn't have been dropped").borrow().did_request_render();
                     if requested_render {
 
                         if previous_render_phase != handle.phase {
@@ -142,7 +138,7 @@ impl RenderManager {
                             previous_render_phase = handle.phase;
                         }
 
-                        let local_cursor = component_handle.render(gl, event, manager);
+                        let local_cursor = component_handle.render(&mut RenderParams::new(gl, event, manager));
                         if handle.region.is_inside(mouse_position) {
                             cursor_result = local_cursor;
                         }
@@ -151,7 +147,7 @@ impl RenderManager {
                     } else {
 
                         if handle.region.is_inside(mouse_position) {
-                            cursor_result = component_handle.get_cursor(event, manager);
+                            cursor_result = component_handle.get_cursor(&mut CursorParams::new(event, manager));
                         }
 
                         false
@@ -166,9 +162,9 @@ impl RenderManager {
     pub fn force_render(&mut self, _manager: &ContainerManager){
         self.render_background = true;
         for handle in &self.render_components {
-            match handle.component.upgrade() {
+            match handle.behavior.upgrade() {
                 Some(cell) => {
-                    cell.borrow_mut().get_agent().request_render();
+                    cell.borrow_mut().get_agent().upgrade().expect("Component agent shouldn't have been dropped").borrow_mut().request_render();
                 }, None => {}
             };
         }
@@ -193,10 +189,10 @@ impl RenderManager {
             };
 
             if needs_render {
-                match handle.component.upgrade() {
+                match handle.behavior.upgrade() {
                     Some(component_cell) => {
-                        let mut the_component = component_cell.borrow_mut();
-                        the_component.get_agent().request_render();
+                        let the_component = component_cell.borrow_mut();
+                        the_component.get_agent().upgrade().expect("Component agent shouldn't have been dropped").borrow_mut().request_render();
                     }, None => {
                         // If the component happens to be dropped, it will be removed from the vec during the next frame
                     }

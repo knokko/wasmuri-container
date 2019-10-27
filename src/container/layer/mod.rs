@@ -1,7 +1,4 @@
-use crate::{
-    Component,
-    ContainerManager
-};
+use crate::*;
 use crate::manager::EventResult;
 use crate::cursor::Cursor;
 
@@ -148,101 +145,102 @@ impl Layer {
     }
 
     pub fn add_component(&mut self, component: Rc<RefCell<dyn Component>>) {
-        let mut agent = LayerAgent::new(self);
-        component.borrow_mut().attach(&mut agent);
+        let behaviors = component.borrow_mut().create_behaviors();
+        for behavior in &behaviors {
+            let mut agent = LayerAgent::new(self);
+            behavior.borrow_mut().attach(&mut agent);
 
-        let render_handle = agent.render_handle;
+            let render_handle = agent.render_handle;
 
-        let key_down_space = agent.key_down_space;
-        let key_up_space = agent.key_up_space;
-        let key_down_priority = agent.key_down_priority;
-        let key_up_priority = agent.key_up_priority;
+            let key_down_space = agent.key_down_space;
+            let key_up_space = agent.key_up_space;
+            let key_down_priority = agent.key_down_priority;
+            let key_up_priority = agent.key_up_priority;
 
-        let mouse_click_space = agent.mouse_click_space;
-        let mouse_click_global = agent.mouse_click_global;
-        let mouse_scroll_space = agent.mouse_scroll_space;
-        let mouse_scroll_priority = agent.mouse_scroll_priority;
-        let mouse_move_space = agent.mouse_move_space;
-        let mouse_move_in_out_space = agent.mouse_move_in_out_space;
-        let mouse_move_global = agent.mouse_move_global;
+            let mouse_click_space = agent.mouse_click_space;
+            let mouse_click_global = agent.mouse_click_global;
+            let mouse_scroll_space = agent.mouse_scroll_space;
+            let mouse_scroll_priority = agent.mouse_scroll_priority;
+            let mouse_move_space = agent.mouse_move_space;
+            let mouse_move_in_out_space = agent.mouse_move_in_out_space;
+            let mouse_move_global = agent.mouse_move_global;
 
-        let receive_updates = agent.receive_updates;
+            let receive_updates = agent.receive_updates;
 
-        let handle = OuterHandle::new(component);
+            match render_handle {
+                Some(render_handle) => {
+                    self.render_manager.claim_space(render_handle.0, render_handle.1, render_handle.2, Rc::downgrade(&behavior));
+                }, None => {}
+            };
 
-        match render_handle {
-            Some(render_handle) => {
-                self.render_manager.claim_space(render_handle.0, render_handle.1, render_handle.2, &handle);
-            }, None => {}
-        };
+            match key_down_space {
+                Some(region) => {
+                    self.key_manager.add_region_key_down_listener(Rc::downgrade(&behavior), region);
+                }, None => {}
+            };
 
-        match key_down_space {
-            Some(region) => {
-                self.key_manager.add_region_key_down_listener(&handle, region);
-            }, None => {}
-        };
+            match key_up_space {
+                Some(region) => {
+                    self.key_manager.add_region_key_up_listener(Rc::downgrade(&behavior), region);
+                }, None => {}
+            };
 
-        match key_up_space {
-            Some(region) => {
-                self.key_manager.add_region_key_up_listener(&handle, region);
-            }, None => {}
-        };
+            match key_down_priority {
+                Some(priority) => {
+                    self.key_manager.add_global_key_down_listener(Rc::downgrade(&behavior), priority);
+                }, None => {}
+            };
 
-        match key_down_priority {
-            Some(priority) => {
-                self.key_manager.add_global_key_down_listener(&handle, priority);
-            }, None => {}
-        };
+            match key_up_priority {
+                Some(priority) => {
+                    self.key_manager.add_global_key_up_listener(Rc::downgrade(&behavior), priority);
+                }, None => {}
+            };
 
-        match key_up_priority {
-            Some(priority) => {
-                self.key_manager.add_global_key_up_listener(&handle, priority);
-            }, None => {}
-        };
+            match mouse_click_space {
+                Some(space) => {
+                    self.mouse_manager.add_click_space_listener(Rc::downgrade(&behavior), space);
+                }, None => {}
+            };
+            
+            if mouse_click_global {
+                self.mouse_manager.add_full_click_listener(Rc::downgrade(&behavior));
+            }
 
-        match mouse_click_space {
-            Some(space) => {
-                self.mouse_manager.add_click_space_listener(&handle, space);
-            }, None => {}
-        };
-        
-        if mouse_click_global {
-            self.mouse_manager.add_full_click_listener(&handle);
+            match mouse_scroll_space {
+                Some(space) => {
+                    self.mouse_manager.add_scroll_space_listener(Rc::downgrade(&behavior), space);
+                }, None => {}
+            };
+
+            match mouse_scroll_priority {
+                Some(priority) => {
+                    self.mouse_manager.add_full_scroll_listener(Rc::downgrade(&behavior), priority);
+                }, None => {}
+            };
+
+            match mouse_move_space {
+                Some(space) => {
+                    self.mouse_manager.add_move_space_listener(Rc::downgrade(&behavior), space);
+                }, None => {}
+            };
+
+            match mouse_move_in_out_space {
+                Some(space) => {
+                    self.mouse_manager.add_in_out_move_listener(Rc::downgrade(&behavior), space);
+                }, None => {}
+            };
+
+            if mouse_move_global {
+                self.mouse_manager.add_full_move_listener(Rc::downgrade(&behavior));
+            }
+
+            if receive_updates {
+                self.update_manager.add_listener(Rc::downgrade(&behavior));
+            }
         }
 
-        match mouse_scroll_space {
-            Some(space) => {
-                self.mouse_manager.add_scroll_space_listener(&handle, space);
-            }, None => {}
-        };
-
-        match mouse_scroll_priority {
-            Some(priority) => {
-                self.mouse_manager.add_full_scroll_listener(&handle, priority);
-            }, None => {}
-        };
-
-        match mouse_move_space {
-            Some(space) => {
-                self.mouse_manager.add_move_space_listener(&handle, space);
-            }, None => {}
-        };
-
-        match mouse_move_in_out_space {
-            Some(space) => {
-                self.mouse_manager.add_in_out_move_listener(&handle, space);
-            }, None => {}
-        };
-
-        if mouse_move_global {
-            self.mouse_manager.add_full_move_listener(&handle);
-        }
-
-        if receive_updates {
-            self.update_manager.add_listener(&handle);
-        }
-
-        self.components.push(handle);
+        self.components.push(OuterHandle::new(component, behaviors));
     }
 }
 
