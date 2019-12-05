@@ -11,15 +11,7 @@ use std::rc::Rc;
 use super::Container;
 use super::layer::Layer;
 
-use wasmuri_events::{
-    KeyDownEvent,
-    KeyUpEvent,
-    MouseClickEvent,
-    MouseMoveEvent,
-    MouseScrollEvent,
-    RenderEvent,
-    UpdateEvent
-};
+use wasmuri_events::*;
 
 use web_sys::WebGlRenderingContext;
 
@@ -41,13 +33,13 @@ impl FlatContainer {
     }
 }
 
-// TODO Implement the return statements properly
 impl std::fmt::Debug for FlatContainer {
 
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "FlatContainer")
     }
 }
+
 impl Container for FlatContainer {
 
     fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> EventResult {
@@ -75,7 +67,7 @@ impl Container for FlatContainer {
     }
 
     fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult {
-        let maybe_cursor = self.layer.on_render(gl, event, manager);
+        let maybe_cursor = self.layer.on_render(gl, event, manager).get_cursor();
         match maybe_cursor {
             Some(cursor) => cursor,
             None => Cursor::DEFAULT

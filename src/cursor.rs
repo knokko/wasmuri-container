@@ -8,7 +8,7 @@ use std::fmt::{
 /// The Cursor enum represents the possible css cursors, see https://www.w3schools.com/cssref/pr_class_cursor.asp for details.
 /// It ignores the naming conventions for enum constants so that the constants can be converted more easily to their corresponding
 /// css values.
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 #[allow(non_camel_case_types)]
 pub enum Cursor {
 

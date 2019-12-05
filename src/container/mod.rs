@@ -17,10 +17,12 @@ use wasmuri_events::{
 use web_sys::WebGlRenderingContext;
 
 mod flat;
+mod layered;
 
 pub mod layer;
 
 pub use flat::*;
+pub use layered::*;
 
 pub trait Container : std::fmt::Debug {
     

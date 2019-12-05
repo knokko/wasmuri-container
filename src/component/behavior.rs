@@ -6,6 +6,38 @@ use std::rc::Weak;
 
 use crate::params::*;
 
+#[derive(Clone)]
+pub struct BehaviorRenderResult {
+
+    cursor: Option<Cursor>,
+    opacity: RenderOpacity
+}
+
+impl BehaviorRenderResult {
+
+    pub fn with_cursor(cursor: Cursor, opacity: RenderOpacity) -> BehaviorRenderResult {
+        BehaviorRenderResult {
+            cursor: Some(cursor),
+            opacity
+        }
+    }
+
+    pub fn without_cursor(opacity: RenderOpacity) -> BehaviorRenderResult {
+        BehaviorRenderResult {
+            cursor: None,
+            opacity
+        }
+    }
+
+    pub fn get_cursor(&self) -> Option<Cursor> {
+        self.cursor
+    }
+
+    pub fn get_opacity(&self) -> RenderOpacity {
+        self.opacity
+    }
+}
+
 pub trait ComponentBehavior {
 
     fn attach(&mut self, agent: &mut LayerAgent);
@@ -30,8 +62,8 @@ pub trait ComponentBehavior {
         false
     }
 
-    fn render(&mut self, _params: &mut RenderParams) -> Option<Cursor> {
-        None
+    fn render(&mut self, _params: &mut RenderParams) -> BehaviorRenderResult {
+        BehaviorRenderResult::without_cursor(RenderOpacity::Empty)
     }
 
     fn get_cursor(&mut self, _params: &mut CursorParams) -> Option<Cursor> {

@@ -1,6 +1,5 @@
 use crate::*;
 use crate::manager::EventResult;
-use crate::cursor::Cursor;
 
 mod handle;
 
@@ -33,7 +32,10 @@ pub use handle::{
 };
 pub use render::{
     RenderTrigger,
-    RenderPhase
+    RenderPhase,
+    RenderOpacity,
+    RenderAction,
+    RenderResult
 };
 
 pub struct Layer {
@@ -95,7 +97,7 @@ impl Layer {
         self.check_agents()
     }
 
-    pub fn on_render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> Option<Cursor> {
+    pub fn on_render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult {
         let render_result = self.render_manager.render(gl, event, manager);
 
         self.check_agents().expect_none("A component attempted to replace the current container during a render event");

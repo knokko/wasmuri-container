@@ -38,6 +38,58 @@ pub enum RenderPhase {
     End
 }
 
+#[derive(Clone,Copy,PartialEq,Eq)]
+pub enum RenderOpacity {
+
+    /// Each pixel in the render area is fully opaque
+    Solid,
+
+    /// All pixels in the render area are fully transparent
+    Empty,
+
+    /// Each pixel in the render area is either fully opaque or fully transparent
+    SolidOrNothing,
+
+    /// Each pixel can have any transparency
+    Mixed
+}
+
+#[derive(Clone,Copy)]
+pub struct RenderAction {
+
+    region: Region,
+    opacity: RenderOpacity
+}
+
+impl RenderAction {
+
+    pub fn get_region(&self) -> Region {
+        self.region
+    }
+
+    pub fn get_opacity(&self) -> RenderOpacity {
+        self.opacity
+    }
+}
+
+#[derive(Clone)]
+pub struct RenderResult {
+
+    cursor: Option<Cursor>,
+    actions: Vec<RenderAction>
+}
+
+impl RenderResult {
+
+    pub fn get_cursor(&self) -> Option<Cursor> {
+        self.cursor
+    }
+
+    pub fn get_actions(&self) -> &Vec<RenderAction> {
+        &self.actions
+    }
+}
+
 struct RenderHandle {
     
     behavior: Weak<RefCell<dyn ComponentBehavior>>,
@@ -103,7 +155,7 @@ impl RenderManager {
         return true;
     }
 
-    pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager) -> Option<Cursor> {
+    pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager) -> RenderResult {
 
         // Draw the background if necessary
         if self.render_background && self.background_color.is_some() {
@@ -116,6 +168,7 @@ impl RenderManager {
         }
 
         let mut cursor_result = None;
+        let mut render_actions = Vec::new();
 
         let mouse_position = manager.get_mouse_position();
 
@@ -142,9 +195,18 @@ impl RenderManager {
 
                         agent.set_rendering();
                         drop(agent);
-                        let local_cursor = component_handle.render(&mut RenderParams::new(gl, event, manager));
+
+                        let local_render_result = component_handle.render(&mut RenderParams::new(gl, event, manager));
+                        let local_cursor = local_render_result.get_cursor();
                         if handle.region.is_inside(mouse_position) {
                             cursor_result = local_cursor;
+                        }
+
+                        if local_render_result.get_opacity() != RenderOpacity::Empty {
+                            render_actions.push(RenderAction {
+                                opacity: local_render_result.get_opacity(),
+                                region: handle.region
+                            });
                         }
                         
                         false
@@ -160,7 +222,10 @@ impl RenderManager {
             }
         });
 
-        cursor_result
+        RenderResult {
+            cursor: cursor_result,
+            actions: render_actions
+        }
     }
 
     pub fn force_render(&mut self, _manager: &ContainerManager){
