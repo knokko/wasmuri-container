@@ -232,7 +232,7 @@ impl Listener<ResizeEvent> for ContainerManager {
                 match &self.current_container {
                     Some(cell) => {
                         let mut container = cell.borrow_mut();
-                        container.force_render(self);
+                        container.force_render();
                     }, None => {}
                 };
             }

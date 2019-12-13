@@ -142,8 +142,9 @@ impl Layer {
         new_container
     }
 
-    pub fn force_render(&mut self, manager: &ContainerManager){
-        self.render_manager.force_render(manager);
+    /// Ensures that all components in this layer will render during the next call to on_render()
+    pub fn force_render(&mut self){
+        self.render_manager.force_full_render();
     }
 
     pub fn add_component(&mut self, component: Rc<RefCell<dyn Component>>) {
@@ -171,7 +172,7 @@ impl Layer {
 
             match render_handle {
                 Some(render_handle) => {
-                    self.render_manager.claim_space(render_handle.0, render_handle.1, render_handle.2, Rc::downgrade(&behavior));
+                    self.render_manager.claim_space(render_handle.0, render_handle.1, render_handle.2, render_handle.3, Rc::downgrade(&behavior));
                 }, None => {}
             };
 
@@ -250,7 +251,7 @@ pub struct LayerAgent<'a> {
 
     layer: &'a Layer,
 
-    render_handle: Option<(Region,RenderTrigger,RenderPhase)>,
+    render_handle: Option<(Region,RenderTrigger,RenderPhase,RenderOpacity)>,
 
     key_down_space: Option<Region>,
     key_up_space: Option<Region>,
@@ -299,13 +300,13 @@ impl<'a> LayerAgent<'a> {
         }
     }
 
-    pub fn claim_render_space(&mut self, region: Region, trigger: RenderTrigger, phase: RenderPhase) -> Result<(),()> {
+    pub fn claim_render_space(&mut self, region: Region, trigger: RenderTrigger, opacity: RenderOpacity, phase: RenderPhase) -> Result<(),()> {
 
         if !self.layer.render_manager.can_claim(region) {
             return Err(());
         }
 
-        self.render_handle = Some((region, trigger, phase));
+        self.render_handle = Some((region, trigger, phase, opacity));
         Ok(())
     }
 

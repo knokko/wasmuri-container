@@ -161,7 +161,7 @@ impl<'a> BaseAgent<'a> {
     }
 
     pub fn is_mouse_over(&self) -> bool {
-        self.region.is_inside(self.manager.get_mouse_position())
+        self.region.is_float_inside(self.manager.get_mouse_position())
     }
 
     /// Checks if the request_render() method of this agent has been called

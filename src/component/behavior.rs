@@ -9,32 +9,29 @@ use crate::params::*;
 #[derive(Clone)]
 pub struct BehaviorRenderResult {
 
-    cursor: Option<Cursor>,
-    opacity: RenderOpacity
+    cursor: Option<Cursor>
 }
 
 impl BehaviorRenderResult {
 
-    pub fn with_cursor(cursor: Cursor, opacity: RenderOpacity) -> BehaviorRenderResult {
+    pub fn with_cursor(cursor: Cursor) -> BehaviorRenderResult {
         BehaviorRenderResult {
-            cursor: Some(cursor),
-            opacity
+            cursor: Some(cursor)
         }
     }
 
-    pub fn without_cursor(opacity: RenderOpacity) -> BehaviorRenderResult {
+    pub fn without_cursor() -> BehaviorRenderResult {
         BehaviorRenderResult {
-            cursor: None,
-            opacity
+            cursor: None
         }
+    }
+
+    pub fn has_cursor(&self) -> bool {
+        self.cursor.is_some()
     }
 
     pub fn get_cursor(&self) -> Option<Cursor> {
-        self.cursor
-    }
-
-    pub fn get_opacity(&self) -> RenderOpacity {
-        self.opacity
+        self.cursor.clone()
     }
 }
 
@@ -63,7 +60,7 @@ pub trait ComponentBehavior {
     }
 
     fn render(&mut self, _params: &mut RenderParams) -> BehaviorRenderResult {
-        BehaviorRenderResult::without_cursor(RenderOpacity::Empty)
+        BehaviorRenderResult::without_cursor()
     }
 
     fn get_cursor(&mut self, _params: &mut CursorParams) -> Option<Cursor> {

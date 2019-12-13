@@ -158,7 +158,7 @@ impl MouseManager {
         self.in_out_move_listeners.drain_filter(|handle| {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
-                    if handle.region.is_inside(prev_mouse_pos) != handle.region.is_inside(next_mouse_pos) {
+                    if handle.region.is_float_inside(prev_mouse_pos) != handle.region.is_float_inside(next_mouse_pos) {
                         component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(event, manager));
                     }
                     false
@@ -169,7 +169,7 @@ impl MouseManager {
         self.area_move_listeners.drain_filter(|handle| {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
-                    if handle.region.is_inside(prev_mouse_pos) || handle.region.is_inside(next_mouse_pos) {
+                    if handle.region.is_float_inside(prev_mouse_pos) || handle.region.is_float_inside(next_mouse_pos) {
                         component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(event, manager));
                     }
                     false
@@ -194,7 +194,7 @@ impl MouseManager {
         self.area_click_listeners.drain_filter(|handle| {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
-                    if handle.region.is_inside(mouse_pos) {
+                    if handle.region.is_float_inside(mouse_pos) {
                         component_cell.borrow_mut().mouse_click(&mut MouseClickParams::new(event, manager));
                     }
                     false
@@ -221,7 +221,7 @@ impl MouseManager {
         self.area_scroll_listeners.drain_filter(|handle| {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
-                    if !consumed && handle.region.is_inside(mouse_pos){
+                    if !consumed && handle.region.is_float_inside(mouse_pos){
                         consumed = component_cell.borrow_mut().mouse_scroll(&mut MouseScrollParams::new(event, manager));
                     }
                     false

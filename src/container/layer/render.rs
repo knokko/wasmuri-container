@@ -44,11 +44,13 @@ pub enum RenderOpacity {
     /// Each pixel in the render area is fully opaque
     Solid,
 
-    /// All pixels in the render area are fully transparent
-    Empty,
+    /// Each pixel in the render area is either fully opaque or fully transparent.
+    /// Which pixels are opaque and which are transparent only changes when the viewport changes.
+    StaticSolidOrNothing,
 
-    /// Each pixel in the render area is either fully opaque or fully transparent
-    SolidOrNothing,
+    /// Each pixel in the render area is either fully opaque or fully transparent.
+    /// Which pixels are opaque and which are transparent can change at any time.
+    DynamicSolidOrNothing,
 
     /// Each pixel can have any transparency
     Mixed
@@ -82,7 +84,7 @@ pub struct RenderResult {
 impl RenderResult {
 
     pub fn get_cursor(&self) -> Option<Cursor> {
-        self.cursor
+        self.cursor.clone()
     }
 
     pub fn get_actions(&self) -> &Vec<RenderAction> {
@@ -97,16 +99,18 @@ struct RenderHandle {
     region: Region,
 
     trigger: RenderTrigger,
+    opacity: RenderOpacity,
     phase: RenderPhase
 }
 
 impl RenderHandle {
     
-    fn new(behavior: Weak<RefCell<dyn ComponentBehavior>>, region: Region, trigger: RenderTrigger, phase: RenderPhase) -> RenderHandle {
+    fn new(behavior: Weak<RefCell<dyn ComponentBehavior>>, region: Region, trigger: RenderTrigger, opacity: RenderOpacity, phase: RenderPhase) -> RenderHandle {
         RenderHandle {
             behavior,
             region,
             trigger,
+            opacity,
             phase,
         }
     }
@@ -131,7 +135,7 @@ impl RenderManager {
     }
 
     /// Should only be called after can_claim confirms that the region can be claimed!
-    pub fn claim_space(&mut self, region: Region, trigger: RenderTrigger, phase: RenderPhase, behavior: Weak<RefCell<dyn ComponentBehavior>>) {
+    pub fn claim_space(&mut self, region: Region, trigger: RenderTrigger, phase: RenderPhase, opacity: RenderOpacity, behavior: Weak<RefCell<dyn ComponentBehavior>>) {
 
         let maybe_index = self.render_components.binary_search_by(|existing| {
             existing.phase.cmp(&phase)
@@ -141,7 +145,7 @@ impl RenderManager {
             Ok(the_index) => index = the_index,
             Err(the_index) => index = the_index
         };
-        self.render_components.insert(index, RenderHandle::new(behavior, region, trigger, phase));
+        self.render_components.insert(index, RenderHandle::new(behavior, region, trigger, opacity, phase));
     }
 
     pub fn can_claim(&self, region: Region) -> bool {
@@ -153,6 +157,51 @@ impl RenderManager {
         }
 
         return true;
+    }
+
+    pub fn predict_render(&mut self) -> Vec<RenderAction> {
+
+        let mut render_actions = Vec::new();
+
+        if self.render_background {
+            match self.background_color {
+                Some(color) => {
+                    if color.get_alpha() > 0 {
+                        let opacity;
+                        if color.get_alpha() == u8::max_value() {
+                            opacity = RenderOpacity::Solid;
+                        } else {
+                            opacity = RenderOpacity::Mixed;
+                        }
+                        render_actions.push(RenderAction {
+                            region: Region::entire_viewport(),
+                            opacity
+                        });
+                    }
+                }, None => {}
+            }
+        }
+
+        self.render_components.drain_filter(|handle| {
+            match handle.behavior.upgrade() {
+                Some(component_cell) => {
+
+                    let component_handle = component_cell.borrow();
+                    let agent_cell = component_handle.get_agent().upgrade().expect("Component agent shouldn't have been dropped");
+                    let agent = agent_cell.borrow();
+
+                    if agent.did_request_render() {
+                        render_actions.push(RenderAction {
+                            region: handle.region,
+                            opacity: handle.opacity
+                        });
+                    }
+                    false
+                }, None => true
+            }
+        });
+
+        render_actions
     }
 
     pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager) -> RenderResult {
@@ -168,6 +217,9 @@ impl RenderManager {
         }
 
         let mut cursor_result = None;
+
+        // TODO Maybe just remove render_actions from render()
+        // TODO And change BehaviorRenderResult back to normal
         let mut render_actions = Vec::new();
 
         let mouse_position = manager.get_mouse_position();
@@ -198,26 +250,16 @@ impl RenderManager {
 
                         let local_render_result = component_handle.render(&mut RenderParams::new(gl, event, manager));
                         let local_cursor = local_render_result.get_cursor();
-                        if handle.region.is_inside(mouse_position) {
+                        if handle.region.is_float_inside(mouse_position) {
                             cursor_result = local_cursor;
                         }
-
-                        if local_render_result.get_opacity() != RenderOpacity::Empty {
-                            render_actions.push(RenderAction {
-                                opacity: local_render_result.get_opacity(),
-                                region: handle.region
-                            });
-                        }
-                        
-                        false
                     } else {
 
-                        if handle.region.is_inside(mouse_position) {
+                        if handle.region.is_float_inside(mouse_position) {
                             cursor_result = component_handle.get_cursor(&mut CursorParams::new(event, manager));
                         }
-
-                        false
                     }
+                    false
                 }, None => true
             }
         });
@@ -228,7 +270,8 @@ impl RenderManager {
         }
     }
 
-    pub fn force_render(&mut self, _manager: &ContainerManager){
+    /// Ensures that all components will render during the next call to render()
+    pub fn force_full_render(&mut self){
         self.render_background = true;
         for handle in &self.render_components {
             match handle.behavior.upgrade() {
@@ -239,6 +282,11 @@ impl RenderManager {
         }
     }
 
+    /// Ensures that all components that are (partially) in the given region will render during the next call to render()
+    pub fn force_partial_render(&mut self, region: Region){
+        // TODO Finish this method!
+    }
+
     pub fn on_mouse_move<'a>(&'a mut self, event: &MouseMoveEvent, manager: &'a ContainerManager){
 
         let old_mouse_pos = manager.get_mouse_position();
@@ -247,12 +295,12 @@ impl RenderManager {
             let needs_render = match &mut handle.trigger {
                 RenderTrigger::MouseMove => true,
                 RenderTrigger::MouseMoveInside => {
-                    let was_in = handle.region.is_inside(old_mouse_pos);
-                    let is_in = handle.region.is_inside(new_mouse_pos);
+                    let was_in = handle.region.is_float_inside(old_mouse_pos);
+                    let is_in = handle.region.is_float_inside(new_mouse_pos);
                     was_in || is_in
                 }, RenderTrigger::MouseInOut => {
-                    let was_in = handle.region.is_inside(old_mouse_pos);
-                    let is_in = handle.region.is_inside(new_mouse_pos);
+                    let was_in = handle.region.is_float_inside(old_mouse_pos);
+                    let is_in = handle.region.is_float_inside(new_mouse_pos);
                     was_in != is_in
                 }, _other => false
             };

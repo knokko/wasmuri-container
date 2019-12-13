@@ -146,7 +146,7 @@ impl KeyListenManager {
         hover_listeners.drain_filter(|handle| {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
-                    if !consumed && handle.region.is_inside(mouse_pos) {
+                    if !consumed && handle.region.is_float_inside(mouse_pos) {
                         let mut component_handle = component_cell.borrow_mut();
                         consumed = processor.process(&mut *component_handle, event, manager);
                     }

@@ -74,7 +74,7 @@ impl Container for FlatContainer {
         }
     }
 
-    fn force_render(&mut self, manager: &ContainerManager){
-        self.layer.force_render(manager);
+    fn force_render(&mut self){
+        self.layer.force_render();
     }
 }
