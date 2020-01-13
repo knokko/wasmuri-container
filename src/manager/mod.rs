@@ -40,7 +40,7 @@ pub struct ContainerManager {
 
 impl ContainerManager {
 
-    pub fn start(canvas: HtmlCanvasElement, resize_listener: Option<Box<dyn ResizeListener>>) -> Rc<RefCell<ContainerManager>> {
+    pub fn start(canvas: HtmlCanvasElement, resize_listener: Option<Box<dyn ResizeListener>>, leak_self: bool) -> Rc<RefCell<ContainerManager>> {
 
         let gl = wasmuri_core::get_gl(&canvas);
 
@@ -81,6 +81,10 @@ impl ContainerManager {
         start_listen(&manager_cell, &RESIZE_HANDLER);
         start_listen(&manager_cell, &UPDATE_HANDLER);
         start_listen(&manager_cell, &RENDER_HANDLER);
+
+        if leak_self {
+            std::mem::forget(Rc::clone(&manager_cell))
+        }
 
         manager_cell
     }
