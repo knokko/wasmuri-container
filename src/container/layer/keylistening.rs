@@ -70,7 +70,7 @@ impl KeyListenManager {
 
     pub fn can_claim_down(&self, region: Region) -> bool {
         for handle in &self.hover_down_listeners {
-            if handle.region.intersects_with(&region) {
+            if handle.region.intersects_with(region) {
                 return false;
             }
         }
@@ -80,7 +80,7 @@ impl KeyListenManager {
 
     pub fn can_claim_up(&self, region: Region) -> bool {
         for handle in &self.hover_up_listeners {
-            if handle.region.intersects_with(&region) {
+            if handle.region.intersects_with(region) {
                 return false;
             }
         }

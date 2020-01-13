@@ -71,7 +71,7 @@ impl MouseManager {
 
     pub fn can_claim_click_space(&self, region: Region) -> bool {
         for handle in &self.area_click_listeners {
-            if handle.region.intersects_with(&region) {
+            if handle.region.intersects_with(region) {
                 return false;
             }
         }
@@ -81,7 +81,7 @@ impl MouseManager {
 
     pub fn can_claim_scroll_space(&self, region: Region) -> bool {
         for handle in &self.area_scroll_listeners {
-            if handle.region.intersects_with(&region) {
+            if handle.region.intersects_with(region) {
                 return false;
             }
         }
