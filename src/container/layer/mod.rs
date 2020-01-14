@@ -1,5 +1,5 @@
 use crate::*;
-use crate::manager::EventResult;
+use crate::manager::*;
 
 mod handle;
 
@@ -67,28 +67,24 @@ impl Layer {
         self.check_agents()
     }
 
-    pub fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> EventResult {
-        self.mouse_manager.fire_mouse_click(event, manager);
-
-        self.check_agents()
+    pub fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> ConsumableEventResult {
+        let click_result = self.mouse_manager.fire_mouse_click(event, manager);
+        self.consumable_result(click_result)
     }
 
-    pub fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> EventResult{
-        self.mouse_manager.fire_mouse_scroll(event, manager);
-
-        self.check_agents()
+    pub fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> ConsumableEventResult {
+        let scroll_result = self.mouse_manager.fire_mouse_scroll(event, manager);
+        self.consumable_result(scroll_result)
     }
 
-    pub fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> EventResult {
-        self.key_manager.fire_key_down(event, manager);
-
-        self.check_agents()
+    pub fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> ConsumableEventResult {
+        let key_down_result = self.key_manager.fire_key_down(event, manager);
+        self.consumable_result(key_down_result)
     }
 
-    pub fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> EventResult {
-        self.key_manager.fire_key_up(event, manager);
-
-        self.check_agents()
+    pub fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> ConsumableEventResult {
+        let key_up_result = self.key_manager.fire_key_up(event, manager);
+        self.consumable_result(key_up_result)
     }
 
     pub fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult {
@@ -97,12 +93,28 @@ impl Layer {
         self.check_agents()
     }
 
+    pub fn predict_render(&mut self) -> Vec<RenderAction> {
+        self.render_manager.predict_render()
+    }
+
+    pub fn force_partial_render(&mut self, regions: &[Region]) -> Vec<RenderAction> {
+        self.render_manager.force_partial_render(regions)
+    }
+
     pub fn on_render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult {
         let render_result = self.render_manager.render(gl, event, manager);
 
         self.check_agents().expect_none("A component attempted to replace the current container during a render event");
 
         render_result
+    }
+
+    fn consumable_result(&mut self, consumed: bool) -> ConsumableEventResult {
+        let normal_result = self.check_agents();
+        match normal_result {
+            Some(next_container) => ConsumableEventResult::change_container(next_container),
+            None => ConsumableEventResult::consume(consumed)
+        }
     }
 
     fn check_agents(&mut self) -> EventResult {
