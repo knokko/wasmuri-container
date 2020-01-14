@@ -43,18 +43,24 @@ pub trait ComponentBehavior {
 
     fn get_agent(&self) -> &Weak<RefCell<ComponentAgent>>;
 
+    /// Returns true if the KeyDownEvent should be consumed: then it will not be passed to other key listeners.
     fn key_down(&mut self, _params: &mut KeyDownParams) -> bool {
         false
     }
 
+    /// Returns true if the KeyUpEvent should be consumed: then it will not be passed to other key listeners.
     fn key_up(&mut self, _params: &mut KeyUpParams) -> bool {
         false
     }
 
-    fn mouse_click(&mut self, _params: &mut MouseClickParams){}
+    /// Returns true if the MouseClickEvent should be consumed: then it will not be passed to other mouse click listeners.
+    fn mouse_click(&mut self, _params: &mut MouseClickParams) -> bool {
+        false
+    }
 
     fn mouse_move(&mut self, _params: &mut MouseMoveParams){}
 
+    /// Returns true if the MouseScrollEvent should be consumed: then it will not be passed to other mouse scroll listeners.
     fn mouse_scroll(&mut self, _params: &mut MouseScrollParams) -> bool {
         false
     }
