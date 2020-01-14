@@ -187,32 +187,41 @@ impl MouseManager {
         });
     }
 
-    pub fn fire_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager){
+    pub fn fire_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> bool {
 
         let mouse_pos = manager.get_mouse_position();
+        let mut consume = false;
 
         self.area_click_listeners.drain_filter(|handle| {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
-                    if handle.region.is_float_inside(mouse_pos) {
-                        component_cell.borrow_mut().mouse_click(&mut MouseClickParams::new(event, manager));
+                    if !consume && handle.region.is_float_inside(mouse_pos) {
+                        consume = component_cell.borrow_mut().mouse_click(&mut MouseClickParams::new(event, manager));
                     }
                     false
                 }, None => true
             }
         });
 
+        if consume {
+            return true;
+        }
+
         self.full_click_listeners.drain_filter(|handle| {
             match handle.upgrade() {
                 Some(component_cell) => {
-                    component_cell.borrow_mut().mouse_click(&mut MouseClickParams::new(event, manager));
+                    if !consume {
+                        consume = component_cell.borrow_mut().mouse_click(&mut MouseClickParams::new(event, manager));
+                    }
                     false
                 }, None => true
             }
         });
+
+        consume
     }
 
-    pub fn fire_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager){
+    pub fn fire_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> bool {
 
         let mouse_pos = manager.get_mouse_position();
 
@@ -241,5 +250,7 @@ impl MouseManager {
                 }
             });
         }
+
+        consumed
     }
 }
