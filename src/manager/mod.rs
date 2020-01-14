@@ -17,6 +17,58 @@ use web_sys::{
 };
 
 pub type EventResult = Option<Rc<RefCell<dyn Container>>>;
+
+pub struct ConsumableEventResult {
+
+    result: EventResult,
+    consumed: bool
+}
+
+impl ConsumableEventResult {
+
+    pub fn change_container(new_container: Rc<RefCell<dyn Container>>) -> ConsumableEventResult {
+        ConsumableEventResult {
+            result: Some(new_container),
+            consumed: true
+        }
+    }
+
+    pub fn dont_consume() -> ConsumableEventResult {
+        Self::consume(false)
+    }
+
+    pub fn do_consume() -> ConsumableEventResult {
+        Self::consume(true)
+    }
+
+    pub fn consume(consumed: bool) -> ConsumableEventResult {
+        ConsumableEventResult {
+            result: None,
+            consumed
+        }
+    }
+
+    pub fn requested_container_change(&self) -> bool {
+        self.result.is_some()
+    }
+
+    pub fn is_consumed(&self) -> bool {
+        self.consumed
+    }
+
+    /// Only use this after requested_container_change() returned true. 
+    /// If that's not the case, this method will panic.
+    pub fn get_next_container(&self) -> Rc<RefCell<dyn Container>> {
+        Rc::clone(self.result.as_ref().unwrap())
+    }
+
+    /// Turn this ConsumableEventResult into an EventResult. 
+    /// This will discard and ignore the value of self.consumed.
+    pub fn as_normal_result(self) -> EventResult {
+        self.result
+    }
+}
+
 pub type RenderResult = Cursor;
 
 pub trait ResizeListener {
