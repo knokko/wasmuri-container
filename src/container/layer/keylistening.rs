@@ -130,15 +130,16 @@ impl KeyListenManager {
         });
     }
 
-    pub fn fire_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager){
-        KeyListenManager::fire(&mut self.hover_down_listeners, &mut self.full_down_listeners, &KeyDownProcessor {}, event, manager);
+    pub fn fire_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> bool {
+        KeyListenManager::fire(&mut self.hover_down_listeners, &mut self.full_down_listeners, &KeyDownProcessor {}, event, manager)
     }
 
-    pub fn fire_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager){
-        KeyListenManager::fire(&mut self.hover_up_listeners, &mut self.full_up_listeners, &KeyUpProcessor {}, event, manager);
+    pub fn fire_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> bool {
+        KeyListenManager::fire(&mut self.hover_up_listeners, &mut self.full_up_listeners, &KeyUpProcessor {}, event, manager)
     }
 
-    fn fire<T>(hover_listeners: &mut Vec<HoverListenHandle>, full_listeners: &mut Vec<KeyListenHandle>, processor: &dyn EventProcessor<T>, event: &T, manager: &ContainerManager){
+    fn fire<T>(hover_listeners: &mut Vec<HoverListenHandle>, full_listeners: &mut Vec<KeyListenHandle>, processor: &dyn EventProcessor<T>, 
+                event: &T, manager: &ContainerManager) -> bool {
         let mouse_pos = manager.get_mouse_position();
 
         // The key listeners with a location have priority over those without bound location
@@ -169,5 +170,7 @@ impl KeyListenManager {
                 }
             });
         }
+
+        consumed
     }
 }
