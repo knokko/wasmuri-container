@@ -77,18 +77,13 @@ impl RenderAction {
 #[derive(Clone)]
 pub struct RenderResult {
 
-    cursor: Option<Cursor>,
-    actions: Vec<RenderAction>
+    cursor: Option<Cursor>
 }
 
 impl RenderResult {
 
     pub fn get_cursor(&self) -> Option<Cursor> {
         self.cursor.clone()
-    }
-
-    pub fn get_actions(&self) -> &Vec<RenderAction> {
-        &self.actions
     }
 }
 
@@ -151,7 +146,7 @@ impl RenderManager {
     pub fn can_claim(&self, region: Region) -> bool {
 
         for handle in &self.render_components {
-            if handle.region.intersects_with(&region) {
+            if handle.region.intersects_with(region) {
                 return false;
             }
         }
@@ -218,10 +213,6 @@ impl RenderManager {
 
         let mut cursor_result = None;
 
-        // TODO Maybe just remove render_actions from render()
-        // TODO And change BehaviorRenderResult back to normal
-        let mut render_actions = Vec::new();
-
         let mouse_position = manager.get_mouse_position();
 
         let mut previous_render_phase = RenderPhase::Start;
@@ -265,8 +256,7 @@ impl RenderManager {
         });
 
         RenderResult {
-            cursor: cursor_result,
-            actions: render_actions
+            cursor: cursor_result
         }
     }
 
@@ -282,9 +272,57 @@ impl RenderManager {
         }
     }
 
-    /// Ensures that all components that are (partially) in the given region will render during the next call to render()
-    pub fn force_partial_render(&mut self, region: Region){
-        // TODO Finish this method!
+    /// Ensures that all components that are (partially) in any of the given regions will render during the next call to render()
+    /// Returns a Vec containing all RenderAction's that will be done during the next render() call due to this method call
+    pub fn force_partial_render(&mut self, regions: &[Region]) -> Vec<RenderAction> {
+
+        // If this layer has a background color, this vector will contain all regions that will need to be re-rendered by fully solid components
+        let mut solid_rerender_regions = Vec::new();
+
+        let mut caused_render_actions = Vec::new();
+
+        for handle in &self.render_components {
+            match handle.behavior.upgrade() {
+                Some(cell) => {
+                    for region in regions {
+                        if handle.region.intersects_with(*region) {
+
+                            // We need this info to determine whether or not the background needs to be re-rendered
+                            if self.background_color.is_some() && handle.opacity == RenderOpacity::Solid {
+                                solid_rerender_regions.push(handle.region);
+                            }
+
+                            let agent_cell = cell.borrow_mut().get_agent().upgrade().expect("Component agent shouldn't have been dropped");
+                            let mut agent = agent_cell.borrow_mut();
+
+                            if !agent.did_request_render() {
+                                agent.request_render();
+                                caused_render_actions.push(RenderAction {
+                                    opacity: handle.opacity,
+                                    region: handle.region
+                                });
+                            }
+                            break;
+                        }
+                    }
+                }, None => {}
+            }
+        }
+
+        // If we have a background color and the regions are not entirely covered by solid components, we need to re-render the background
+        if self.background_color.is_some() {
+            for region in regions {
+                if !region.get_uncovered_regions(&solid_rerender_regions).is_empty() {
+
+                    // Since we need to re-render the background, we also need to re-render all other components
+                    self.force_full_render();
+                    break;
+                }
+            }
+        }
+
+        // Finally return the render actions that were caused by this method call
+        caused_render_actions
     }
 
     pub fn on_mouse_move<'a>(&'a mut self, event: &MouseMoveEvent, manager: &'a ContainerManager){

@@ -9,7 +9,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::Container;
-use super::layer::Layer;
+use super::layer::*;
 
 use wasmuri_events::*;
 
@@ -48,48 +48,53 @@ impl std::fmt::Debug for LayeredContainer {
 impl Container for LayeredContainer {
 
     fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> EventResult {
-        let mut next_container = None;
-
         for layer in &mut self.layers.iter_mut().rev() {
-            let requested_container = layer.on_key_down(event, manager);
+            let key_down_result = layer.on_key_down(event, manager);
+            
+            // If a container change was requested, it is guaranteed that the event was consumed
+            if key_down_result.requested_container_change() {
+                return Some(key_down_result.get_next_container());
+            }
 
-            // The foreground layers will get priority if multiplie layers request a container change
-            if requested_container.is_some() && next_container.is_none() {
-                next_container = requested_container;
+            if key_down_result.is_consumed() {
+                return None;
             }
         }
 
-        next_container
+        None
     }
 
     fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> EventResult {
-        let mut next_container = None;
-
         for layer in &mut self.layers.iter_mut().rev() {
-            let requested_container = layer.on_key_up(event, manager);
+            let key_up_result = layer.on_key_up(event, manager);
 
-            // The foreground layers will get priority if multiplie layers request a container change
-            if requested_container.is_some() && next_container.is_none() {
-                next_container = requested_container;
+            // If a container change was requested, it is guaranteed that the event was consumed
+            if key_up_result.requested_container_change() {
+                return Some(key_up_result.get_next_container());
+            }
+
+            if key_up_result.is_consumed() {
+                return None;
             }
         }
 
-        next_container
+        None
     }
 
     fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> EventResult {
-        let mut next_container = None;
-
         for layer in &mut self.layers.iter_mut().rev() {
-            let requested_container = layer.on_mouse_click(event, manager);
+            let event_result = layer.on_mouse_click(event, manager);
 
-            // The foreground layers will get priority if multiplie layers request a container change
-            if requested_container.is_some() && next_container.is_none() {
-                next_container = requested_container;
+            if event_result.requested_container_change() {
+                return Some(event_result.get_next_container());
+            }
+
+            if event_result.is_consumed() {
+                return None;
             }
         }
 
-        next_container
+        None
     }
 
     fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) -> EventResult {
@@ -108,18 +113,19 @@ impl Container for LayeredContainer {
     }
 
     fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> EventResult {
-        let mut next_container = None;
-
         for layer in &mut self.layers.iter_mut().rev() {
-            let requested_container = layer.on_mouse_scroll(event, manager);
+            let event_result = layer.on_mouse_scroll(event, manager);
 
-            // The foreground layers will get priority if multiplie layers request a container change
-            if requested_container.is_some() && next_container.is_none() {
-                next_container = requested_container;
+            if event_result.requested_container_change() {
+                return Some(event_result.get_next_container());
+            }
+
+            if event_result.is_consumed() {
+                return None;
             }
         }
 
-        next_container
+        None
     }
 
     fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult {
@@ -139,10 +145,85 @@ impl Container for LayeredContainer {
 
     fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult {
 
-        // First find out which regions are going to be rendered with which opacity
-        // TODO Use the predict_render functions of layer
+        // First find out which regions are going to be rendered with which opacity initially
+        let mut rerender_actions = Vec::with_capacity(self.layers.len());
+        for layer in &mut self.layers {
+            rerender_actions.push(layer.predict_render());
+        }
 
-        // TODO Force certain parts of some layers to also render
+        // These are needed to keep track of the progress of propagating renders between layers
+        let mut rerender_indices = vec![0; self.layers.len()];
+
+        /*
+        The next lines of code are to propagate render actions between layers.
+        For each region in some layer that has to be re-rendered, the following things need to happen:
+        1. That same region also has to be re-rendered in all layers that are in front of that layer.
+        2. If the render action in the region is partially transparent, that region must also be re-rendered in all layers behind that layer.
+
+        The interesting part is that, in order to re-render a certain region in a certain layer, all components intersecting with that region
+        need to be re-rendered, but it is very well possible that some components can lay partially outside that region. When that is the case,
+        step 1 and 2 also need to be executed for the region of that component as well.
+        */
+        let mut current_layer_index = 0;
+        while current_layer_index < self.layers.len() {
+            let all_actions_of_layer = &rerender_actions[current_layer_index];
+            let current_action_index = rerender_indices[current_layer_index];
+
+            let num_actions_of_layer = all_actions_of_layer.len();
+
+            // Only do stuff if there are actually unprocessed Region's
+            if current_action_index != num_actions_of_layer {
+                let actions_to_process = &all_actions_of_layer[current_action_index..all_actions_of_layer.len()];
+
+                // Obtain the regions of the actions to process
+                let mut regions_to_process_front = Vec::with_capacity(actions_to_process.len());
+                let mut regions_to_process_back = Vec::with_capacity(actions_to_process.len());
+                for action in actions_to_process {
+                    regions_to_process_front.push(action.get_region());
+
+                    let opacity = action.get_opacity();
+
+                    // If the opacity of the render action is fully solid or static solid, no need to re-render the stuff behind it
+                    if opacity != RenderOpacity::Solid && opacity != RenderOpacity::StaticSolidOrNothing {
+                        regions_to_process_back.push(action.get_region());
+                    }
+                }
+
+                // Force the layers in front of the current layer to re-render those regions as well
+                for front_layer_index in current_layer_index + 1 .. self.layers.len() {
+                    let front_layer = &mut self.layers[front_layer_index];
+                    let mut new_actions_to_process = front_layer.force_partial_render(&regions_to_process_front);
+
+                    // Append all new render actions for the front layer
+                    rerender_actions[front_layer_index].append(&mut new_actions_to_process);
+                }
+
+                // Force the layers behind the current layer to re-render the regions behind the transparent render actions
+                for back_layer_index in (current_layer_index - 1 ..=0).rev() {
+                    let back_layer = &mut self.layers[back_layer_index];
+                    let mut new_actions_to_process = back_layer.force_partial_render(&regions_to_process_back);
+                    let num_new_actions = new_actions_to_process.len();
+
+                    // Append all new render actions for the back layer
+                    rerender_actions[back_layer_index].append(&mut new_actions_to_process);
+
+                    // TODO For performance, remove the regions in regions_to_process_back that are fully covered by a solid render action
+                    // in new_actions_to_process
+
+                    // The new render actions of this back layer will also have to be processed...
+                    if num_new_actions > 0 {
+                        current_layer_index = back_layer_index;
+                    }
+                }
+
+                // Mark the regions we just processed as 'completed'
+                rerender_indices[current_layer_index] = num_actions_of_layer;
+            }
+
+            current_layer_index += 1;
+        }
+
+        // Now that all layers know exactly which components to render, the real render can finally begin
         let mut maybe_cursor = None;
 
         for layer in &mut self.layers {
