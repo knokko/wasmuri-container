@@ -2,9 +2,8 @@ use std::cell::RefCell;
 use std::rc::Weak;
 
 use crate::*;
-use crate::params::*;
 
-use super::Region;
+use wasmuri_core::util::Region;
 
 use wasmuri_events::{
     MouseClickEvent,

@@ -3,8 +3,6 @@ use crate::*;
 use std::cell::*;
 use std::rc::*;
 
-use super::ComponentAgent;
-
 pub struct ComponentHandle {
 
     component: Rc<RefCell<dyn Component>>,

@@ -1,22 +1,12 @@
 use crate::*;
-use crate::params::*;
 
 use std::cell::RefCell;
-use std::cmp::{
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord
-};
+use std::cmp::*;
 use std::rc::Weak;
 
-use super::Region;
-
 use wasmuri_core::color::Color;
-use wasmuri_events::{
-    MouseMoveEvent,
-    RenderEvent
-};
+use wasmuri_core::util::Region;
+use wasmuri_events::*;
 
 use web_sys::WebGlRenderingContext;
 

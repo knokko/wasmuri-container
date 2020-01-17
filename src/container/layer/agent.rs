@@ -1,13 +1,9 @@
-use crate::{
-    Component,
-    ContainerManager,
-    Container
-};
+use crate::*;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use super::Region;
+use wasmuri_core::util::Region;
 
 pub struct ComponentAgent {
 

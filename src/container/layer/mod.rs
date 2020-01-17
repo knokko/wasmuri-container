@@ -1,8 +1,6 @@
 use crate::*;
-use crate::manager::*;
 
 mod handle;
-
 mod update;
 mod render;
 mod keylistening;
@@ -26,10 +24,7 @@ use web_sys::WebGlRenderingContext;
 mod agent;
 
 pub use agent::*;
-pub use handle::{
-    ComponentHandle,
-    OuterHandle
-};
+pub use handle::*;
 pub use render::{
     RenderTrigger,
     RenderPhase,

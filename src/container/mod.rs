@@ -1,28 +1,16 @@
-use crate::{
-    EventResult,
-    RenderResult,
-    ContainerManager
-};
+use crate::*;
 
-use wasmuri_events::{
-    KeyDownEvent,
-    KeyUpEvent,
-    MouseClickEvent,
-    MouseMoveEvent,
-    MouseScrollEvent,
-    RenderEvent,
-    UpdateEvent
-};
+use wasmuri_events::*;
 
 use web_sys::WebGlRenderingContext;
 
 mod flat;
 mod layered;
-
-pub mod layer;
+mod layer;
 
 pub use flat::*;
 pub use layered::*;
+pub use layer::*;
 
 pub trait Container : std::fmt::Debug {
     
@@ -38,7 +26,7 @@ pub trait Container : std::fmt::Debug {
 
     fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult;
 
-    fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult;
+    fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> ContainerRenderResult;
 
     /// When this method has been called, the Container should re-render everything the next time render is called.
     fn force_render(&mut self);

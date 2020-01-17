@@ -1,14 +1,10 @@
 use crate::*;
-use crate::params::*;
-use crate::container::layer::Region;
 
 use std::cell::RefCell;
 use std::rc::Weak;
 
-use wasmuri_events::{
-    KeyDownEvent,
-    KeyUpEvent
-};
+use wasmuri_core::util::Region;
+use wasmuri_events::*;
 
 struct KeyListenHandle { 
 

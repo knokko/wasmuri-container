@@ -1,15 +1,7 @@
-use crate::{
-    EventResult,
-    RenderResult,
-    ContainerManager
-};
-use crate::cursor::Cursor;
+use crate::*;
 
 use std::cell::RefCell;
 use std::rc::Rc;
-
-use super::Container;
-use super::layer::Layer;
 
 use wasmuri_events::*;
 
@@ -66,7 +58,7 @@ impl Container for FlatContainer {
         self.layer.on_update(event, manager)
     }
 
-    fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult {
+    fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> ContainerRenderResult {
         let maybe_cursor = self.layer.on_render(gl, event, manager).get_cursor();
         match maybe_cursor {
             Some(cursor) => cursor,

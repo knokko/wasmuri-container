@@ -2,13 +2,12 @@
 
 mod manager;
 mod container;
-
 mod cursor;
 mod component;
+mod params;
 
-pub mod params;
-
-pub use cursor::*;
 pub use manager::*;
 pub use container::*;
+pub use cursor::*;
 pub use component::*;
+pub use params::*;

@@ -1,10 +1,12 @@
-use crate::container::layer::*;
-use crate::cursor::Cursor;
+use crate::*;
 
 use std::cell::RefCell;
-use std::rc::Weak;
+use std::rc::*;
 
-use crate::params::*;
+pub trait Component {
+
+    fn create_behaviors(&mut self) -> Vec<Rc<RefCell<dyn ComponentBehavior>>>;
+}
 
 #[derive(Clone)]
 pub struct BehaviorRenderResult {

@@ -1,15 +1,7 @@
-use crate::{
-    EventResult,
-    RenderResult,
-    ContainerManager
-};
-use crate::cursor::Cursor;
+use crate::*;
 
 use std::cell::RefCell;
 use std::rc::Rc;
-
-use super::Container;
-use super::layer::*;
 
 use wasmuri_events::*;
 
@@ -143,7 +135,7 @@ impl Container for LayeredContainer {
         next_container
     }
 
-    fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult {
+    fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> ContainerRenderResult {
 
         // First find out which regions are going to be rendered with which opacity initially
         let mut rerender_actions = Vec::with_capacity(self.layers.len());

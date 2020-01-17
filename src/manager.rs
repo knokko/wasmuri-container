@@ -1,5 +1,4 @@
-use crate::Container;
-use crate::cursor::Cursor;
+use crate::*;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -69,7 +68,7 @@ impl ConsumableEventResult {
     }
 }
 
-pub type RenderResult = Cursor;
+pub type ContainerRenderResult = Cursor;
 
 pub trait ResizeListener {
 
