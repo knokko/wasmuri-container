@@ -1,81 +1,13 @@
 use crate::*;
 
 use std::cell::RefCell;
-use std::cmp::*;
-use std::rc::Weak;
+use std::rc::*;
+
+use web_sys::*;
 
 use wasmuri_core::color::Color;
 use wasmuri_core::util::Region;
 use wasmuri_events::*;
-
-use web_sys::WebGlRenderingContext;
-
-#[derive(Clone,Copy)]
-pub enum RenderTrigger {
-
-    Request,
-    MouseInOut,
-    MouseMoveInside,
-    MouseMove,
-    Always
-}
-
-#[derive(PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
-pub enum RenderPhase {
-
-    Start,
-    Text,
-    End
-}
-
-#[derive(Clone,Copy,PartialEq,Eq)]
-pub enum RenderOpacity {
-
-    /// Each pixel in the render area is fully opaque
-    Solid,
-
-    /// Each pixel in the render area is either fully opaque or fully transparent.
-    /// Which pixels are opaque and which are transparent only changes when the viewport changes.
-    StaticSolidOrNothing,
-
-    /// Each pixel in the render area is either fully opaque or fully transparent.
-    /// Which pixels are opaque and which are transparent can change at any time.
-    DynamicSolidOrNothing,
-
-    /// Each pixel can have any transparency
-    Mixed
-}
-
-#[derive(Clone,Copy)]
-pub struct RenderAction {
-
-    region: Region,
-    opacity: RenderOpacity
-}
-
-impl RenderAction {
-
-    pub fn get_region(&self) -> Region {
-        self.region
-    }
-
-    pub fn get_opacity(&self) -> RenderOpacity {
-        self.opacity
-    }
-}
-
-#[derive(Clone)]
-pub struct RenderResult {
-
-    cursor: Option<Cursor>
-}
-
-impl RenderResult {
-
-    pub fn get_cursor(&self) -> Option<Cursor> {
-        self.cursor.clone()
-    }
-}
 
 struct RenderHandle {
     
@@ -158,10 +90,7 @@ impl RenderManager {
                         } else {
                             opacity = RenderOpacity::Mixed;
                         }
-                        render_actions.push(RenderAction {
-                            region: Region::entire_viewport(),
-                            opacity
-                        });
+                        render_actions.push(RenderAction::new(Region::entire_viewport(), opacity));
                     }
                 }, None => {}
             }
@@ -176,10 +105,7 @@ impl RenderManager {
                     let agent = agent_cell.borrow();
 
                     if agent.did_request_render() {
-                        render_actions.push(RenderAction {
-                            region: handle.region,
-                            opacity: handle.opacity
-                        });
+                        render_actions.push(RenderAction::new(handle.region, handle.opacity));
                     }
                     false
                 }, None => true
@@ -245,9 +171,7 @@ impl RenderManager {
             }
         });
 
-        RenderResult {
-            cursor: cursor_result
-        }
+        RenderResult::new(cursor_result)
     }
 
     /// Ensures that all components will render during the next call to render()
@@ -287,10 +211,7 @@ impl RenderManager {
 
                             if !agent.did_request_render() {
                                 agent.request_render();
-                                caused_render_actions.push(RenderAction {
-                                    opacity: handle.opacity,
-                                    region: handle.region
-                                });
+                                caused_render_actions.push(RenderAction::new(handle.region, handle.opacity));
                             }
                             break;
                         }

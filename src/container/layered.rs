@@ -14,18 +14,18 @@ pub struct LayeredContainer {
     /// 
     /// The background layer will render first and the front layer will render last (so the front layer will draw over the background layer).
     /// The other events (like clicking and pressing keys), will be processed first by the front layer and last by the background layer.
-    layers: Vec<Layer>
+    layers: Vec<Box<dyn Layer>>
 }
 
 impl LayeredContainer {
 
-    pub fn new(layers: Vec<Layer>) -> LayeredContainer {
+    pub fn new(layers: Vec<Box<dyn Layer>>) -> LayeredContainer {
         LayeredContainer {
             layers
         }
     }
 
-    pub fn celled(layers: Vec<Layer>) -> Rc<RefCell<LayeredContainer>> {
+    pub fn celled(layers: Vec<Box<dyn Layer>>) -> Rc<RefCell<LayeredContainer>> {
         Rc::new(RefCell::new(Self::new(layers)))
     }
 }

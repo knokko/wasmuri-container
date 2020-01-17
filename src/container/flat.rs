@@ -9,18 +9,18 @@ use web_sys::WebGlRenderingContext;
 
 pub struct FlatContainer {
 
-    layer: Layer
+    layer: Box<dyn Layer>
 }
 
 impl FlatContainer {
 
-    pub fn new(layer: Layer) -> FlatContainer {
+    pub fn new(layer: Box<dyn Layer>) -> FlatContainer {
         FlatContainer {
             layer
         }
     }
 
-    pub fn celled(layer: Layer) -> Rc<RefCell<FlatContainer>> {
+    pub fn celled(layer: Box<dyn Layer>) -> Rc<RefCell<FlatContainer>> {
         Rc::new(RefCell::new(Self::new(layer)))
     }
 }

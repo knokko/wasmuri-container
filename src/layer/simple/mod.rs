@@ -1,6 +1,5 @@
 use crate::*;
 
-mod handle;
 mod update;
 mod render;
 mod keylistening;
@@ -21,19 +20,7 @@ use wasmuri_events::*;
 
 use web_sys::WebGlRenderingContext;
 
-mod agent;
-
-pub use agent::*;
-pub use handle::*;
-pub use render::{
-    RenderTrigger,
-    RenderPhase,
-    RenderOpacity,
-    RenderAction,
-    RenderResult
-};
-
-pub struct Layer {
+pub struct SimpleLayer {
     
     components: Vec<OuterHandle>,
 
@@ -43,65 +30,16 @@ pub struct Layer {
     render_manager: RenderManager
 }
 
-impl Layer {
+impl SimpleLayer {
 
-    pub fn new(background_color: Option<Color>) -> Layer {
-        Layer {
+    pub fn new(background_color: Option<Color>) -> SimpleLayer {
+        SimpleLayer {
             components: Vec::with_capacity(10),
             render_manager: RenderManager::new(background_color),
             update_manager: UpdateManager::new(),
             key_manager: KeyListenManager::new(),
             mouse_manager: MouseManager::new()
         }
-    }
-
-    pub fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) -> EventResult {
-        self.mouse_manager.fire_mouse_move(event, manager);
-        self.render_manager.on_mouse_move(event, manager);
-
-        self.check_agents()
-    }
-
-    pub fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> ConsumableEventResult {
-        let click_result = self.mouse_manager.fire_mouse_click(event, manager);
-        self.consumable_result(click_result)
-    }
-
-    pub fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> ConsumableEventResult {
-        let scroll_result = self.mouse_manager.fire_mouse_scroll(event, manager);
-        self.consumable_result(scroll_result)
-    }
-
-    pub fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> ConsumableEventResult {
-        let key_down_result = self.key_manager.fire_key_down(event, manager);
-        self.consumable_result(key_down_result)
-    }
-
-    pub fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> ConsumableEventResult {
-        let key_up_result = self.key_manager.fire_key_up(event, manager);
-        self.consumable_result(key_up_result)
-    }
-
-    pub fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult {
-        self.update_manager.fire_update(event, manager);
-
-        self.check_agents()
-    }
-
-    pub fn predict_render(&mut self) -> Vec<RenderAction> {
-        self.render_manager.predict_render()
-    }
-
-    pub fn force_partial_render(&mut self, regions: &[Region]) -> Vec<RenderAction> {
-        self.render_manager.force_partial_render(regions)
-    }
-
-    pub fn on_render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult {
-        let render_result = self.render_manager.render(gl, event, manager);
-
-        self.check_agents().expect_none("A component attempted to replace the current container during a render event");
-
-        render_result
     }
 
     fn consumable_result(&mut self, consumed: bool) -> ConsumableEventResult {
@@ -148,16 +86,67 @@ impl Layer {
 
         new_container
     }
+}
 
-    /// Ensures that all components in this layer will render during the next call to on_render()
-    pub fn force_render(&mut self){
+impl Layer for SimpleLayer {
+
+    fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) -> EventResult {
+        self.mouse_manager.fire_mouse_move(event, manager);
+        self.render_manager.on_mouse_move(event, manager);
+
+        self.check_agents()
+    }
+
+    fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> ConsumableEventResult {
+        let click_result = self.mouse_manager.fire_mouse_click(event, manager);
+        self.consumable_result(click_result)
+    }
+
+    fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> ConsumableEventResult {
+        let scroll_result = self.mouse_manager.fire_mouse_scroll(event, manager);
+        self.consumable_result(scroll_result)
+    }
+
+    fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> ConsumableEventResult {
+        let key_down_result = self.key_manager.fire_key_down(event, manager);
+        self.consumable_result(key_down_result)
+    }
+
+    fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> ConsumableEventResult {
+        let key_up_result = self.key_manager.fire_key_up(event, manager);
+        self.consumable_result(key_up_result)
+    }
+
+    fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult {
+        self.update_manager.fire_update(event, manager);
+
+        self.check_agents()
+    }
+
+    fn predict_render(&mut self) -> Vec<RenderAction> {
+        self.render_manager.predict_render()
+    }
+
+    fn force_partial_render(&mut self, regions: &[Region]) -> Vec<RenderAction> {
+        self.render_manager.force_partial_render(regions)
+    }
+
+    fn on_render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult {
+        let render_result = self.render_manager.render(gl, event, manager);
+
+        self.check_agents().expect_none("A component attempted to replace the current container during a render event");
+
+        render_result
+    }
+
+    fn force_render(&mut self){
         self.render_manager.force_full_render();
     }
 
-    pub fn add_component(&mut self, component: Rc<RefCell<dyn Component>>) {
+    fn add_component(&mut self, component: Rc<RefCell<dyn Component>>) {
         let behaviors = component.borrow_mut().create_behaviors();
         for behavior in &behaviors {
-            let mut agent = LayerAgent::new(self);
+            let mut agent = SimpleLayerAgent::new(self);
             behavior.borrow_mut().attach(&mut agent);
 
             let render_handle = agent.render_handle;
@@ -254,9 +243,9 @@ impl Layer {
     }
 }
 
-pub struct LayerAgent<'a> {
+pub struct SimpleLayerAgent<'a> {
 
-    layer: &'a Layer,
+    layer: &'a SimpleLayer,
 
     render_handle: Option<(Region,RenderTrigger,RenderPhase,RenderOpacity)>,
 
@@ -279,10 +268,10 @@ pub struct LayerAgent<'a> {
     receive_updates: bool
 }
 
-impl<'a> LayerAgent<'a> {
+impl<'a> SimpleLayerAgent<'a> {
 
-    fn new(layer: &'a Layer) -> LayerAgent {
-        LayerAgent {
+    fn new(layer: &'a SimpleLayer) -> SimpleLayerAgent {
+        SimpleLayerAgent {
             layer,
 
             render_handle: None,
@@ -306,8 +295,11 @@ impl<'a> LayerAgent<'a> {
             receive_updates: false
         }
     }
+}
 
-    pub fn claim_render_space(&mut self, region: Region, trigger: RenderTrigger, opacity: RenderOpacity, phase: RenderPhase) -> Result<(),()> {
+impl<'a> LayerAgent for SimpleLayerAgent<'a> {
+
+    fn claim_render_space(&mut self, region: Region, trigger: RenderTrigger, opacity: RenderOpacity, phase: RenderPhase) -> Result<(),()> {
 
         if !self.layer.render_manager.can_claim(region) {
             return Err(());
@@ -317,7 +309,7 @@ impl<'a> LayerAgent<'a> {
         Ok(())
     }
 
-    pub fn claim_key_down_space(&mut self, region: Region) -> Result<(),()> {
+    fn claim_key_down_space(&mut self, region: Region) -> Result<(),()> {
 
         if !self.layer.key_manager.can_claim_down(region) {
             return Err(());
@@ -327,7 +319,7 @@ impl<'a> LayerAgent<'a> {
         Ok(())
     }
 
-    pub fn claim_key_up_space(&mut self, region: Region) -> Result<(),()> {
+    fn claim_key_up_space(&mut self, region: Region) -> Result<(),()> {
 
         if !self.layer.key_manager.can_claim_up(region) {
             return Err(());
@@ -337,7 +329,7 @@ impl<'a> LayerAgent<'a> {
         Ok(())
     }
 
-    pub fn claim_key_listen_space(&mut self, region: Region) -> Result<(),()> {
+    fn claim_key_listen_space(&mut self, region: Region) -> Result<(),()> {
         if !self.layer.key_manager.can_claim_down(region) && !self.layer.key_manager.can_claim_up(region) {
             return Err(());
         }
@@ -347,20 +339,20 @@ impl<'a> LayerAgent<'a> {
         Ok(())
     }
 
-    pub fn make_key_down_listener(&mut self, priority: i8){
+    fn make_key_down_listener(&mut self, priority: i8){
         self.key_down_priority = Some(priority);
     }
 
-    pub fn make_key_up_listener(&mut self, priority: i8){
+    fn make_key_up_listener(&mut self, priority: i8){
         self.key_up_priority = Some(priority);
     }
 
-    pub fn make_key_listener(&mut self, priority: i8){
+    fn make_key_listener(&mut self, priority: i8){
         self.key_down_priority = Some(priority);
         self.key_up_priority = Some(priority);
     }
 
-    pub fn claim_mouse_click_space(&mut self, region: Region) -> Result<(),()> {
+    fn claim_mouse_click_space(&mut self, region: Region) -> Result<(),()> {
         if !self.layer.mouse_manager.can_claim_click_space(region) {
             return Err(());
         }
@@ -369,7 +361,7 @@ impl<'a> LayerAgent<'a> {
         Ok(())
     }
 
-    pub fn claim_mouse_scroll_space(&mut self, region: Region) -> Result<(),()> {
+    fn claim_mouse_scroll_space(&mut self, region: Region) -> Result<(),()> {
         if !self.layer.mouse_manager.can_claim_scroll_space(region) {
             return Err(());
         }
@@ -378,27 +370,27 @@ impl<'a> LayerAgent<'a> {
         Ok(())
     }
 
-    pub fn make_mouse_scroll_listener(&mut self, priority: i8) {
+    fn make_mouse_scroll_listener(&mut self, priority: i8) {
         self.mouse_scroll_priority = Some(priority);
     }
 
-    pub fn claim_mouse_move_space(&mut self, region: Region){
+    fn claim_mouse_move_space(&mut self, region: Region){
         self.mouse_move_space = Some(region);
     }
 
-    pub fn claim_mouse_in_out_space(&mut self, region: Region){
+    fn claim_mouse_in_out_space(&mut self, region: Region){
         self.mouse_move_in_out_space = Some(region);
     }
 
-    pub fn make_mouse_move_listener(&mut self){
+    fn make_mouse_move_listener(&mut self){
         self.mouse_move_global = true;
     }
 
-    pub fn make_mouse_click_listener(&mut self){
+    fn make_mouse_click_listener(&mut self){
         self.mouse_click_global = true;
     }
 
-    pub fn make_update_listener(&mut self){
+    fn make_update_listener(&mut self){
         self.receive_updates = true;
     }
 }

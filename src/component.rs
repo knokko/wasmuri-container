@@ -39,7 +39,7 @@ impl BehaviorRenderResult {
 
 pub trait ComponentBehavior {
 
-    fn attach(&mut self, agent: &mut LayerAgent);
+    fn attach(&mut self, agent: &mut dyn LayerAgent);
 
     fn set_agent(&mut self, agent: Weak<RefCell<ComponentAgent>>);
 

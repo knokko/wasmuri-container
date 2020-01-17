@@ -6,11 +6,9 @@ use web_sys::WebGlRenderingContext;
 
 mod flat;
 mod layered;
-mod layer;
 
 pub use flat::*;
 pub use layered::*;
-pub use layer::*;
 
 pub trait Container : std::fmt::Debug {
     
