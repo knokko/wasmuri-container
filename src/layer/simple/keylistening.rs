@@ -126,31 +126,32 @@ impl KeyListenManager {
         });
     }
 
-    pub fn fire_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> bool {
-        KeyListenManager::fire(&mut self.hover_down_listeners, &mut self.full_down_listeners, &KeyDownProcessor {}, event, manager)
+    pub fn fire_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager, mouse_pos: Option<(f32, f32)>) -> bool {
+        KeyListenManager::fire(&mut self.hover_down_listeners, &mut self.full_down_listeners, &KeyDownProcessor {}, event, manager, mouse_pos)
     }
 
-    pub fn fire_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> bool {
-        KeyListenManager::fire(&mut self.hover_up_listeners, &mut self.full_up_listeners, &KeyUpProcessor {}, event, manager)
+    pub fn fire_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager, mouse_pos: Option<(f32, f32)>) -> bool {
+        KeyListenManager::fire(&mut self.hover_up_listeners, &mut self.full_up_listeners, &KeyUpProcessor {}, event, manager, mouse_pos)
     }
 
     fn fire<T>(hover_listeners: &mut Vec<HoverListenHandle>, full_listeners: &mut Vec<KeyListenHandle>, processor: &dyn EventProcessor<T>, 
-                event: &T, manager: &ContainerManager) -> bool {
-        let mouse_pos = manager.get_mouse_position();
+                event: &T, manager: &ContainerManager, mouse_pos: Option<(f32, f32)>) -> bool {
 
         // The key listeners with a location have priority over those without bound location
         let mut consumed = false;
-        hover_listeners.drain_filter(|handle| {
-            match handle.behavior.upgrade() {
-                Some(component_cell) => {
-                    if !consumed && handle.region.is_float_inside(mouse_pos) {
-                        let mut component_handle = component_cell.borrow_mut();
-                        consumed = processor.process(&mut *component_handle, event, manager);
-                    }
-                    false
-                }, None => true
-            }
-        });
+        if mouse_pos.is_some() {
+            hover_listeners.drain_filter(|handle| {
+                match handle.behavior.upgrade() {
+                    Some(component_cell) => {
+                        if !consumed && handle.region.is_float_inside(mouse_pos.unwrap()) {
+                            let mut component_handle = component_cell.borrow_mut();
+                            consumed = processor.process(&mut *component_handle, event, manager);
+                        }
+                        false
+                    }, None => true
+                }
+            });
+        }
 
         // If none of the bound key listeners consumed the event, it will be passed to the full key listeners
         if !consumed {

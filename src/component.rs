@@ -11,20 +11,24 @@ pub trait Component {
 #[derive(Clone)]
 pub struct BehaviorRenderResult {
 
-    cursor: Option<Cursor>
+    cursor: Option<Cursor>,
+
+    actions: Vec<PassedRenderAction>
 }
 
 impl BehaviorRenderResult {
 
-    pub fn with_cursor(cursor: Cursor) -> BehaviorRenderResult {
+    pub fn with_cursor(cursor: Cursor, actions: Vec<PassedRenderAction>) -> BehaviorRenderResult {
         BehaviorRenderResult {
-            cursor: Some(cursor)
+            cursor: Some(cursor),
+            actions
         }
     }
 
-    pub fn without_cursor() -> BehaviorRenderResult {
+    pub fn without_cursor(actions: Vec<PassedRenderAction>) -> BehaviorRenderResult {
         BehaviorRenderResult {
-            cursor: None
+            cursor: None,
+            actions
         }
     }
 
@@ -34,6 +38,10 @@ impl BehaviorRenderResult {
 
     pub fn get_cursor(&self) -> Option<Cursor> {
         self.cursor.clone()
+    }
+
+    pub fn get_render_actions(&mut self) -> &mut Vec<PassedRenderAction> {
+        &mut self.actions
     }
 }
 
@@ -55,11 +63,15 @@ pub trait ComponentBehavior {
         false
     }
 
-    /// Returns true if the MouseClickEvent should be consumed: then it will not be passed to other mouse click listeners.
-    fn mouse_click(&mut self, _params: &mut MouseClickParams) -> bool {
-        false
-    }
+    /// Called when the user clicked on this component
+    fn mouse_click_inside(&mut self, _params: &mut MouseClickParams) {}
 
+    /// Called when a mouse click occurred, but the click wasn't on this component
+    fn mouse_click_outside(&mut self, _params: &mut MouseClickOutParams) {}
+
+    fn mouse_click_anywhere(&mut self, _params: &mut MouseClickAnyParams) {}
+
+    /// Called when a mouse click occurred, no matter where
     fn mouse_move(&mut self, _params: &mut MouseMoveParams){}
 
     /// Returns true if the MouseScrollEvent should be consumed: then it will not be passed to other mouse scroll listeners.
@@ -68,7 +80,7 @@ pub trait ComponentBehavior {
     }
 
     fn render(&mut self, _params: &mut RenderParams) -> BehaviorRenderResult {
-        BehaviorRenderResult::without_cursor()
+        BehaviorRenderResult::without_cursor(Vec::with_capacity(0))
     }
 
     fn get_cursor(&mut self, _params: &mut CursorParams) -> Option<Cursor> {

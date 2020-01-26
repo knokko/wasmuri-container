@@ -81,8 +81,6 @@ pub struct ContainerManager {
     resize_listener: Option<Box<dyn ResizeListener>>,
     prev_cursor: Option<Cursor>,
     gl: WebGlRenderingContext,
-
-    mouse_position: (i32,i32),
     
     current_container: Option<Rc<RefCell<dyn Container>>>,
 
@@ -113,9 +111,6 @@ impl ContainerManager {
             prev_cursor: None,
             gl,
             resize_listener,
-
-            // I'm afraid I can't retrieve the mouse position until the mouse moves for the first time
-            mouse_position: (0, 0),
 
             current_container: None,
 
@@ -166,12 +161,6 @@ impl ContainerManager {
     /// Gives a reference to the TextRenderer of this ContainerManager, which is inside a RefCell.
     pub fn get_text_renderer(&self) -> &RefCell<TextRenderer> {
         &self.text_renderer
-    }
-
-    /// Gives the current mouse position in the OpenGL coordinate system. If a MouseMoveEvent is currently being fired,
-    /// this method will return the previous mouse coordinates.
-    pub fn get_mouse_position(&self) -> (f32, f32) {
-        self.to_gl_coords(self.mouse_position)
     }
 
     /// Converts the position in pixel coordinates (the offset in pixels between the point and the corner of the canvas) to
@@ -238,11 +227,6 @@ impl Listener<MouseMoveEvent> for ContainerManager {
                 claim_container.on_mouse_move(event, self)
             }, None => None
         });
-
-        // Unfortunately, offset_x and offset_y are experimental, but there is no alternative that I know off.
-        let x = event.mouse_event.offset_x();
-        let y = event.mouse_event.offset_y();
-        self.mouse_position = (x, y);
     }
 }
 

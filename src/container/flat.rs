@@ -43,15 +43,15 @@ impl Container for FlatContainer {
     }
 
     fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> EventResult {
-        self.layer.on_mouse_click(event, manager).as_normal_result()
+        self.layer.on_mouse_click(event.mouse_event.button(), manager)
     }
 
     fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) -> EventResult {
-        self.layer.on_mouse_move(event, manager)
+        self.layer.on_mouse_move(Some(manager.to_gl_coords(event.get_new_position())), manager).as_normal_result()
     }
 
     fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> EventResult {
-        self.layer.on_mouse_scroll(event, manager).as_normal_result()
+        self.layer.on_mouse_scroll(event.mouse_event.delta_y(), manager).as_normal_result()
     }
 
     fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult {

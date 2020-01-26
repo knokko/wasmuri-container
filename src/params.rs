@@ -3,9 +3,6 @@ use crate::ContainerManager;
 use wasmuri_events::{
     KeyDownEvent,
     KeyUpEvent,
-    MouseClickEvent,
-    MouseMoveEvent,
-    MouseScrollEvent,
     RenderEvent,
     UpdateEvent
 };
@@ -46,31 +43,53 @@ impl<'a> KeyUpParams<'a> {
 
 pub struct MouseClickParams<'a> {
 
-    pub event: &'a MouseClickEvent, 
+    pub mouse_pos: (f32,f32), 
+    pub button: i16,
     pub manager: &'a ContainerManager
 }
 
 impl<'a> MouseClickParams<'a> {
 
-    pub fn new(event: &'a MouseClickEvent, manager: &'a ContainerManager) -> MouseClickParams<'a> {
+    pub fn new(mouse_pos: (f32,f32), button: i16, manager: &'a ContainerManager) -> MouseClickParams<'a> {
         MouseClickParams {
-            event,
+            mouse_pos,
+            button,
             manager
         }
     }
 }
 
+pub struct MouseClickOutParams<'a> {
+
+    pub button: i16,
+    pub manager: &'a ContainerManager
+}
+
+impl<'a> MouseClickOutParams<'a> {
+
+    pub fn new(button: i16, manager: &'a ContainerManager) -> MouseClickOutParams<'a> {
+        MouseClickOutParams {
+            button,
+            manager
+        }
+    }
+}
+
+pub type MouseClickAnyParams<'a> = MouseClickOutParams<'a>;
+
 pub struct MouseMoveParams<'a> {
 
-    pub event: &'a MouseMoveEvent, 
+    pub old_mouse_pos: Option<(f32,f32)>,
+    pub new_mouse_pos: Option<(f32,f32)>,
     pub manager: &'a ContainerManager
 }
 
 impl<'a> MouseMoveParams<'a> {
 
-    pub fn new(event: &'a MouseMoveEvent, manager: &'a ContainerManager) -> MouseMoveParams<'a> {
+    pub fn new(old_mouse_pos: Option<(f32,f32)>, new_mouse_pos: Option<(f32,f32)>, manager: &'a ContainerManager) -> MouseMoveParams<'a> {
         MouseMoveParams {
-            event,
+            old_mouse_pos,
+            new_mouse_pos,
             manager
         }
     }
@@ -78,15 +97,17 @@ impl<'a> MouseMoveParams<'a> {
 
 pub struct MouseScrollParams<'a> {
 
-    pub event: &'a MouseScrollEvent, 
+    pub mouse_pos: Option<(f32,f32)>, 
+    pub delta: f64,
     pub manager: &'a ContainerManager
 }
 
 impl<'a> MouseScrollParams<'a> {
 
-    pub fn new(event: &'a MouseScrollEvent, manager: &'a ContainerManager) -> MouseScrollParams<'a> {
+    pub fn new(mouse_pos: Option<(f32,f32)>, delta: f64, manager: &'a ContainerManager) -> MouseScrollParams<'a> {
         MouseScrollParams {
-            event,
+            mouse_pos,
+            delta,
             manager
         }
     }

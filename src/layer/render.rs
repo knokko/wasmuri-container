@@ -39,16 +39,16 @@ pub enum RenderOpacity {
 }
 
 #[derive(Clone,Copy)]
-pub struct RenderAction {
+pub struct PlannedRenderAction {
 
     region: Region,
     opacity: RenderOpacity
 }
 
-impl RenderAction {
+impl PlannedRenderAction {
 
     pub fn new(region: Region, opacity: RenderOpacity) -> Self {
-        RenderAction {
+        Self {
             region,
             opacity
         }
@@ -60,6 +60,25 @@ impl RenderAction {
 
     pub fn get_opacity(&self) -> RenderOpacity {
         self.opacity
+    }
+}
+
+#[derive(Clone,Copy,PartialEq,Eq,Debug)]
+pub struct PassedRenderAction {
+
+    region: Region
+}
+
+impl PassedRenderAction {
+
+    pub fn new(region: Region) -> Self {
+        Self {
+            region
+        }
+    }
+
+    pub fn get_region(&self) -> Region {
+        self.region
     }
 }
 

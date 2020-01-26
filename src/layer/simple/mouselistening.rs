@@ -5,12 +5,6 @@ use crate::*;
 
 use wasmuri_core::util::Region;
 
-use wasmuri_events::{
-    MouseClickEvent,
-    MouseMoveEvent,
-    MouseScrollEvent
-};
-
 struct RegionHandle {
 
     behavior: Weak<RefCell<dyn ComponentBehavior>>,
@@ -148,17 +142,17 @@ impl MouseManager {
         });
     }
 
-    pub fn fire_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager){
+    fn mouse_inside(handle: &RegionHandle, mouse_pos: Option<(f32, f32)>) -> bool {
+        mouse_pos.is_some() && handle.region.is_float_inside(mouse_pos.unwrap())
+    }
 
-        let prev_mouse_pos = manager.get_mouse_position();
-        let pixel_next_mouse_pos = (event.mouse_event.offset_x(), event.mouse_event.offset_y());
-        let next_mouse_pos = manager.to_gl_coords(pixel_next_mouse_pos);
+    pub fn fire_mouse_move(&mut self, prev_mouse_pos: Option<(f32,f32)>, next_mouse_pos: Option<(f32, f32)>, manager: &ContainerManager) {
 
         self.in_out_move_listeners.drain_filter(|handle| {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
-                    if handle.region.is_float_inside(prev_mouse_pos) != handle.region.is_float_inside(next_mouse_pos) {
-                        component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(event, manager));
+                    if Self::mouse_inside(handle, prev_mouse_pos) != Self::mouse_inside(handle, next_mouse_pos) {
+                        component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(prev_mouse_pos, next_mouse_pos, manager));
                     }
                     false
                 }, None => true
@@ -168,8 +162,8 @@ impl MouseManager {
         self.area_move_listeners.drain_filter(|handle| {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
-                    if handle.region.is_float_inside(prev_mouse_pos) || handle.region.is_float_inside(next_mouse_pos) {
-                        component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(event, manager));
+                    if Self::mouse_inside(handle, prev_mouse_pos) || Self::mouse_inside(handle, next_mouse_pos) {
+                        component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(prev_mouse_pos, next_mouse_pos, manager));
                     }
                     false
                 }, None => true
@@ -179,70 +173,81 @@ impl MouseManager {
         self.full_move_listeners.drain_filter(|handle| {
             match handle.upgrade() {
                 Some(component_cell) => {
-                    component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(event, manager));
+                    component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(prev_mouse_pos, next_mouse_pos, manager));
                     false
                 }, None => true
             }
         });
     }
 
-    pub fn fire_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> bool {
-
-        let mouse_pos = manager.get_mouse_position();
-        let mut consume = false;
+    pub fn fire_mouse_click(&mut self, manager: &ContainerManager, mouse_pos: (f32,f32), button: i16) {
 
         self.area_click_listeners.drain_filter(|handle| {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
-                    if !consume && handle.region.is_float_inside(mouse_pos) {
-                        consume = component_cell.borrow_mut().mouse_click(&mut MouseClickParams::new(event, manager));
+                    if handle.region.is_float_inside(mouse_pos) {
+                        component_cell.borrow_mut().mouse_click_inside(&mut MouseClickParams::new(mouse_pos, button, manager));
+                    } else {
+                        component_cell.borrow_mut().mouse_click_outside(&mut MouseClickOutParams::new(button, manager));
                     }
                     false
                 }, None => true
             }
         });
-
-        if consume {
-            return true;
-        }
 
         self.full_click_listeners.drain_filter(|handle| {
             match handle.upgrade() {
                 Some(component_cell) => {
-                    if !consume {
-                        consume = component_cell.borrow_mut().mouse_click(&mut MouseClickParams::new(event, manager));
-                    }
+                    component_cell.borrow_mut().mouse_click_anywhere(&mut MouseClickAnyParams::new(button, manager));
+                    false
+                }, None => true
+            }
+        });
+    }
+
+    pub fn fire_mouse_click_outside(&mut self, manager: &ContainerManager, button: i16) {
+        self.area_click_listeners.drain_filter(|handle| {
+            match handle.behavior.upgrade() {
+                Some(component_cell) => {
+                    component_cell.borrow_mut().mouse_click_outside(&mut MouseClickOutParams::new(button, manager));
                     false
                 }, None => true
             }
         });
 
-        consume
+        self.full_click_listeners.drain_filter(|handle| {
+            match handle.upgrade() {
+                Some(component_cell) => {
+                    component_cell.borrow_mut().mouse_click_anywhere(&mut MouseClickOutParams::new(button, manager));
+                    false
+                }, None => true
+            }
+        });
     }
 
-    pub fn fire_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> bool {
-
-        let mouse_pos = manager.get_mouse_position();
+    pub fn fire_mouse_scroll(&mut self, manager: &ContainerManager, mouse_pos: Option<(f32,f32)>, delta: f64) -> bool {
 
         let mut consumed = false;
 
-        self.area_scroll_listeners.drain_filter(|handle| {
-            match handle.behavior.upgrade() {
-                Some(component_cell) => {
-                    if !consumed && handle.region.is_float_inside(mouse_pos){
-                        consumed = component_cell.borrow_mut().mouse_scroll(&mut MouseScrollParams::new(event, manager));
-                    }
-                    false
-                }, None => true
-            }
-        });
+        if mouse_pos.is_some() {
+            self.area_scroll_listeners.drain_filter(|handle| {
+                match handle.behavior.upgrade() {
+                    Some(component_cell) => {
+                        if !consumed && handle.region.is_float_inside(mouse_pos.unwrap()){
+                            consumed = component_cell.borrow_mut().mouse_scroll(&mut MouseScrollParams::new(mouse_pos, delta, manager));
+                        }
+                        false
+                    }, None => true
+                }
+            });
+        }
 
         if !consumed {
             self.full_scroll_listeners.drain_filter(|handle| {
                 match handle.behavior.upgrade() {
                     Some(component_cell) => {
                         if !consumed {
-                            consumed = component_cell.borrow_mut().mouse_scroll(&mut MouseScrollParams::new(event, manager));
+                            consumed = component_cell.borrow_mut().mouse_scroll(&mut MouseScrollParams::new(mouse_pos, delta, manager));
                         }
                         false
                     }, None => true

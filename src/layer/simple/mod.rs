@@ -27,7 +27,10 @@ pub struct SimpleLayer {
     key_manager: KeyListenManager,
     mouse_manager: MouseManager,
     update_manager: UpdateManager,
-    render_manager: RenderManager
+    render_manager: RenderManager,
+
+    mouse_pos: Option<(f32, f32)>,
+    last_render_actions: Vec<PassedRenderAction>
 }
 
 impl SimpleLayer {
@@ -35,10 +38,14 @@ impl SimpleLayer {
     pub fn new(background_color: Option<Color>) -> SimpleLayer {
         SimpleLayer {
             components: Vec::with_capacity(10),
+
             render_manager: RenderManager::new(background_color),
             update_manager: UpdateManager::new(),
             key_manager: KeyListenManager::new(),
-            mouse_manager: MouseManager::new()
+            mouse_manager: MouseManager::new(),
+
+            mouse_pos: None,
+            last_render_actions: Vec::new()
         }
     }
 
@@ -90,30 +97,46 @@ impl SimpleLayer {
 
 impl Layer for SimpleLayer {
 
-    fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) -> EventResult {
-        self.mouse_manager.fire_mouse_move(event, manager);
-        self.render_manager.on_mouse_move(event, manager);
+    fn on_mouse_move(&mut self, next_mouse_pos: Option<(f32, f32)>, manager: &ContainerManager) -> ConsumableEventResult {
+        self.mouse_manager.fire_mouse_move(self.mouse_pos, next_mouse_pos, manager);
+        self.render_manager.on_mouse_move(self.mouse_pos, next_mouse_pos);
 
+        self.mouse_pos = next_mouse_pos;
+
+        // If we rendered something at the mouse position, we assume that the user clicked on this layer and therefore not on the layers behind
+        let mut move_result = false;
+        if next_mouse_pos.is_some() {
+            for render_action in &self.last_render_actions {
+                if render_action.get_region().is_float_inside(next_mouse_pos.unwrap()) {
+                    move_result = true;
+                    break;
+                }
+            }
+        }
+
+        self.consumable_result(move_result)
+    }
+
+    fn on_mouse_click(&mut self, button: i16, manager: &ContainerManager) -> EventResult {
+        match self.mouse_pos {
+            Some(mouse_pos) => self.mouse_manager.fire_mouse_click(manager, mouse_pos, button), 
+            None => self.mouse_manager.fire_mouse_click_outside(manager, button)
+        };
         self.check_agents()
     }
 
-    fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> ConsumableEventResult {
-        let click_result = self.mouse_manager.fire_mouse_click(event, manager);
-        self.consumable_result(click_result)
-    }
-
-    fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> ConsumableEventResult {
-        let scroll_result = self.mouse_manager.fire_mouse_scroll(event, manager);
+    fn on_mouse_scroll(&mut self, delta: f64, manager: &ContainerManager) -> ConsumableEventResult {
+        let scroll_result = self.mouse_manager.fire_mouse_scroll(manager, self.mouse_pos, delta);
         self.consumable_result(scroll_result)
     }
 
     fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> ConsumableEventResult {
-        let key_down_result = self.key_manager.fire_key_down(event, manager);
+        let key_down_result = self.key_manager.fire_key_down(event, manager, self.mouse_pos);
         self.consumable_result(key_down_result)
     }
 
     fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> ConsumableEventResult {
-        let key_up_result = self.key_manager.fire_key_up(event, manager);
+        let key_up_result = self.key_manager.fire_key_up(event, manager, self.mouse_pos);
         self.consumable_result(key_up_result)
     }
 
@@ -123,20 +146,23 @@ impl Layer for SimpleLayer {
         self.check_agents()
     }
 
-    fn predict_render(&mut self) -> Vec<RenderAction> {
+    fn predict_render(&mut self) -> Vec<PlannedRenderAction> {
         self.render_manager.predict_render()
     }
 
-    fn force_partial_render(&mut self, regions: &[Region]) -> Vec<RenderAction> {
+    fn force_partial_render(&mut self, regions: &[Region]) -> Vec<PlannedRenderAction> {
         self.render_manager.force_partial_render(regions)
     }
 
     fn on_render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult {
-        let render_result = self.render_manager.render(gl, event, manager);
+        let render_result = self.render_manager.render(gl, event, manager, self.mouse_pos);
+
+        // TODO Hm... what about components that did not re-render?
+        self.last_render_actions = render_result.1;
 
         self.check_agents().expect_none("A component attempted to replace the current container during a render event");
 
-        render_result
+        render_result.0
     }
 
     fn force_render(&mut self){

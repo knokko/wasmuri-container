@@ -111,12 +111,13 @@ pub struct BaseAgent<'a> {
     components_to_add: Vec<Box<dyn Component>>,
 
     manager: &'a ContainerManager,
+    mouse_pos: Option<(f32,f32)>,
     region: &'a Region
 }
 
 impl<'a> BaseAgent<'a> {
 
-    pub fn new(region: &'a Region, manager: &'a ContainerManager) -> BaseAgent<'a> {
+    pub fn new(region: &'a Region, manager: &'a ContainerManager, mouse_pos: Option<(f32,f32)>) -> BaseAgent<'a> {
         BaseAgent {
             requested_render: false,
             requested_removal: false,
@@ -124,6 +125,7 @@ impl<'a> BaseAgent<'a> {
             components_to_add: Vec::new(),
 
             region,
+            mouse_pos,
             manager
         }
     }
@@ -156,8 +158,16 @@ impl<'a> BaseAgent<'a> {
         self.region
     }
 
+    /// Check if the mouse is currently hovering over this component and that there is no component in the front
+    /// of this component inbetween.
     pub fn is_mouse_over(&self) -> bool {
-        self.region.is_float_inside(self.manager.get_mouse_position())
+        self.mouse_pos.is_some() && self.region.is_float_inside(self.mouse_pos.unwrap())
+    }
+
+    /// Updates the mouse_pos of this agent to the given value. 
+    /// This method should normally only be called from the Layer.
+    pub fn update_mouse_pos(&mut self, new_mouse_pos: Option<(f32, f32)>) {
+        self.mouse_pos = new_mouse_pos;
     }
 
     /// Checks if the request_render() method of this agent has been called
@@ -185,9 +195,9 @@ pub struct ConsumableAgent<'a> {
 
 impl<'a> ConsumableAgent<'a> {
 
-    pub fn new(region: &'a Region, manager: &'a ContainerManager) -> ConsumableAgent<'a> {
+    pub fn new(region: &'a Region, manager: &'a ContainerManager, mouse_pos: Option<(f32,f32)>) -> ConsumableAgent<'a> {
         ConsumableAgent {
-            base_agent: BaseAgent::new(region, manager),
+            base_agent: BaseAgent::new(region, manager, mouse_pos),
             consumed: false
         }
     }

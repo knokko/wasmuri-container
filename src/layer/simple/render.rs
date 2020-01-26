@@ -17,7 +17,9 @@ struct RenderHandle {
 
     trigger: RenderTrigger,
     opacity: RenderOpacity,
-    phase: RenderPhase
+    phase: RenderPhase,
+
+    prev_render_actions: Vec<PassedRenderAction>
 }
 
 impl RenderHandle {
@@ -29,6 +31,7 @@ impl RenderHandle {
             trigger,
             opacity,
             phase,
+            prev_render_actions: Vec::with_capacity(1)
         }
     }
 }
@@ -76,7 +79,7 @@ impl RenderManager {
         return true;
     }
 
-    pub fn predict_render(&mut self) -> Vec<RenderAction> {
+    pub fn predict_render(&mut self) -> Vec<PlannedRenderAction> {
 
         let mut render_actions = Vec::new();
 
@@ -90,7 +93,7 @@ impl RenderManager {
                         } else {
                             opacity = RenderOpacity::Mixed;
                         }
-                        render_actions.push(RenderAction::new(Region::entire_viewport(), opacity));
+                        render_actions.push(PlannedRenderAction::new(Region::entire_viewport(), opacity));
                     }
                 }, None => {}
             }
@@ -105,7 +108,7 @@ impl RenderManager {
                     let agent = agent_cell.borrow();
 
                     if agent.did_request_render() {
-                        render_actions.push(RenderAction::new(handle.region, handle.opacity));
+                        render_actions.push(PlannedRenderAction::new(handle.region, handle.opacity));
                     }
                     false
                 }, None => true
@@ -115,7 +118,10 @@ impl RenderManager {
         render_actions
     }
 
-    pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager) -> RenderResult {
+    pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager, 
+            mouse_position: Option<(f32,f32)>) -> (RenderResult, Vec<PassedRenderAction>) {
+
+        let mut render_actions = Vec::new();
 
         // Draw the background if necessary
         if self.render_background && self.background_color.is_some() {
@@ -125,11 +131,17 @@ impl RenderManager {
 
             // Once the background has been drawn, don't redraw until we need to do it again
             self.render_background = false;
+            
+        }
+
+        let has_background = self.background_color.is_some();
+
+        // If we have a background, then we will always render the entire viewport
+        if has_background {
+            render_actions.push(PassedRenderAction::new(Region::entire_viewport()));
         }
 
         let mut cursor_result = None;
-
-        let mouse_position = manager.get_mouse_position();
 
         let mut previous_render_phase = RenderPhase::Start;
 
@@ -144,6 +156,8 @@ impl RenderManager {
 
                         if previous_render_phase != handle.phase {
 
+                            // TODO Handle render phase switching per container rather than per layer
+
                             // Currently, the Text phase is the only phase that has built-in support, other phases will have to prepare themselves
                             if handle.phase == RenderPhase::Text {
                                 manager.get_text_renderer().borrow_mut().start_rendering();
@@ -155,15 +169,29 @@ impl RenderManager {
                         agent.set_rendering();
                         drop(agent);
 
-                        let local_render_result = component_handle.render(&mut RenderParams::new(gl, event, manager));
+                        let mut local_render_result = component_handle.render(&mut RenderParams::new(gl, event, manager));
+                        let mut local_render_actions = local_render_result.get_render_actions();
+
+                        // If we have a background, we will render the entire viewport anyway, so adding a part of the viewport to it is useless
+                        if !has_background {
+                            handle.prev_render_actions = local_render_actions.clone();
+                            render_actions.append(&mut local_render_actions);
+                        }
+
                         let local_cursor = local_render_result.get_cursor();
-                        if handle.region.is_float_inside(mouse_position) {
+                        if mouse_position.is_some() && handle.region.is_float_inside(mouse_position.unwrap()) {
                             cursor_result = local_cursor;
                         }
                     } else {
 
-                        if handle.region.is_float_inside(mouse_position) {
+                        if mouse_position.is_some() && handle.region.is_float_inside(mouse_position.unwrap()) {
                             cursor_result = component_handle.get_cursor(&mut CursorParams::new(event, manager));
+                        }
+
+                        if !has_background {
+                            for prev_render_action in &handle.prev_render_actions {
+                                render_actions.push(*prev_render_action);
+                            }
                         }
                     }
                     false
@@ -171,7 +199,7 @@ impl RenderManager {
             }
         });
 
-        RenderResult::new(cursor_result)
+        (RenderResult::new(cursor_result), render_actions)
     }
 
     /// Ensures that all components will render during the next call to render()
@@ -188,7 +216,7 @@ impl RenderManager {
 
     /// Ensures that all components that are (partially) in any of the given regions will render during the next call to render()
     /// Returns a Vec containing all RenderAction's that will be done during the next render() call due to this method call
-    pub fn force_partial_render(&mut self, regions: &[Region]) -> Vec<RenderAction> {
+    pub fn force_partial_render(&mut self, regions: &[Region]) -> Vec<PlannedRenderAction> {
 
         // If this layer has a background color, this vector will contain all regions that will need to be re-rendered by fully solid components
         let mut solid_rerender_regions = Vec::new();
@@ -211,7 +239,7 @@ impl RenderManager {
 
                             if !agent.did_request_render() {
                                 agent.request_render();
-                                caused_render_actions.push(RenderAction::new(handle.region, handle.opacity));
+                                caused_render_actions.push(PlannedRenderAction::new(handle.region, handle.opacity));
                             }
                             break;
                         }
@@ -236,20 +264,17 @@ impl RenderManager {
         caused_render_actions
     }
 
-    pub fn on_mouse_move<'a>(&'a mut self, event: &MouseMoveEvent, manager: &'a ContainerManager){
-
-        let old_mouse_pos = manager.get_mouse_position();
-        let new_mouse_pos = manager.to_gl_coords((event.mouse_event.offset_x(), event.mouse_event.offset_y()));
+    pub fn on_mouse_move<'a>(&'a mut self, old_mouse_pos: Option<(f32,f32)>, new_mouse_pos: Option<(f32,f32)>){
         for handle in &mut self.render_components {
             let needs_render = match &mut handle.trigger {
                 RenderTrigger::MouseMove => true,
                 RenderTrigger::MouseMoveInside => {
-                    let was_in = handle.region.is_float_inside(old_mouse_pos);
-                    let is_in = handle.region.is_float_inside(new_mouse_pos);
+                    let was_in = old_mouse_pos.is_some() && handle.region.is_float_inside(old_mouse_pos.unwrap());
+                    let is_in = new_mouse_pos.is_some() && handle.region.is_float_inside(new_mouse_pos.unwrap());
                     was_in || is_in
                 }, RenderTrigger::MouseInOut => {
-                    let was_in = handle.region.is_float_inside(old_mouse_pos);
-                    let is_in = handle.region.is_float_inside(new_mouse_pos);
+                    let was_in = old_mouse_pos.is_some() && handle.region.is_float_inside(old_mouse_pos.unwrap());
+                    let is_in = new_mouse_pos.is_some() && handle.region.is_float_inside(new_mouse_pos.unwrap());
                     was_in != is_in
                 }, _other => false
             };

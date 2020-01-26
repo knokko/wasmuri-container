@@ -74,26 +74,31 @@ impl Container for LayeredContainer {
     }
 
     fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> EventResult {
-        for layer in &mut self.layers.iter_mut().rev() {
-            let event_result = layer.on_mouse_click(event, manager);
 
-            if event_result.requested_container_change() {
-                return Some(event_result.get_next_container());
-            }
+        let mut next_container = None;
 
-            if event_result.is_consumed() {
-                return None;
+        for layer in &mut self.layers {
+
+            // If multiple layers request a container change, layers in the front will get priority
+            let click_result = layer.on_mouse_click(event.mouse_event.button(), manager);
+            if click_result.is_some() {
+                next_container = click_result;
             }
         }
 
-        None
+        next_container
     }
 
     fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) -> EventResult {
         let mut next_container = None;
+        let mut new_mouse_pos = Some(manager.to_gl_coords(event.get_new_position()));
 
         for layer in &mut self.layers.iter_mut().rev() {
-            let requested_container = layer.on_mouse_move(event, manager);
+            let current_result = layer.on_mouse_move(new_mouse_pos, manager);
+            if current_result.is_consumed() {
+                new_mouse_pos = None;
+            }
+            let requested_container = current_result.as_normal_result();
 
             // The foreground layers will get priority if multiplie layers request a container change
             if requested_container.is_some() && next_container.is_none() {
@@ -106,7 +111,7 @@ impl Container for LayeredContainer {
 
     fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> EventResult {
         for layer in &mut self.layers.iter_mut().rev() {
-            let event_result = layer.on_mouse_scroll(event, manager);
+            let event_result = layer.on_mouse_scroll(event.mouse_event.delta_y(), manager);
 
             if event_result.requested_container_change() {
                 return Some(event_result.get_next_container());
