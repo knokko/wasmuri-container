@@ -20,7 +20,7 @@ pub enum RenderPhase {
     End
 }
 
-#[derive(Clone,Copy,PartialEq,Eq)]
+#[derive(Clone,Copy,PartialEq,Eq,Debug)]
 pub enum RenderOpacity {
 
     /// Each pixel in the render area is fully opaque
