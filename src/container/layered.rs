@@ -198,20 +198,23 @@ impl Container for LayeredContainer {
                 }
 
                 // Force the layers behind the current layer to re-render the regions behind the transparent render actions
-                for back_layer_index in (current_layer_index - 1 ..=0).rev() {
-                    let back_layer = &mut self.layers[back_layer_index];
-                    let mut new_actions_to_process = back_layer.force_partial_render(&regions_to_process_back);
-                    let num_new_actions = new_actions_to_process.len();
+                if current_layer_index > 0 {
+                    for back_layer_index in (0 .. current_layer_index).rev() {
+                        
+                        let back_layer = &mut self.layers[back_layer_index];
+                        let mut new_actions_to_process = back_layer.force_partial_render(&regions_to_process_back);
+                        let num_new_actions = new_actions_to_process.len();
 
-                    // Append all new render actions for the back layer
-                    rerender_actions[back_layer_index].append(&mut new_actions_to_process);
+                        // Append all new render actions for the back layer
+                        rerender_actions[back_layer_index].append(&mut new_actions_to_process);
 
-                    // TODO For performance, remove the regions in regions_to_process_back that are fully covered by a solid render action
-                    // in new_actions_to_process
+                        // TODO For performance, remove the regions in regions_to_process_back that are fully covered by a solid render action
+                        // in new_actions_to_process
 
-                    // The new render actions of this back layer will also have to be processed...
-                    if num_new_actions > 0 {
-                        current_layer_index = back_layer_index;
+                        // The new render actions of this back layer will also have to be processed...
+                        if num_new_actions > 0 {
+                            current_layer_index = back_layer_index;
+                        }
                     }
                 }
 
