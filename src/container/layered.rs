@@ -90,6 +90,8 @@ impl Container for LayeredContainer {
     }
 
     fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) -> EventResult {
+
+        // TODO This sometimes doesn't work properly, requires investigation...
         let mut next_container = None;
         let mut new_mouse_pos = Some(manager.to_gl_coords(event.get_new_position()));
 
