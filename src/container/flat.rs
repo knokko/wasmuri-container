@@ -42,8 +42,8 @@ impl Container for FlatContainer {
         self.layer.on_key_up(event, manager).as_normal_result()
     }
 
-    fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> EventResult {
-        self.layer.on_mouse_click(event.mouse_event.button(), manager)
+    fn on_mouse_click(&mut self, click: ClickInfo, manager: &ContainerManager) -> EventResult {
+        self.layer.on_mouse_click(click, manager)
     }
 
     fn on_mouse_move(&mut self, event: &MouseMoveEvent, manager: &ContainerManager) -> EventResult {
@@ -54,12 +54,12 @@ impl Container for FlatContainer {
         self.layer.on_mouse_scroll(event.mouse_event.delta_y(), manager).as_normal_result()
     }
 
-    fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult {
-        self.layer.on_update(event, manager)
+    fn on_update(&mut self, manager: &ContainerManager) -> EventResult {
+        self.layer.on_update(manager)
     }
 
-    fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> ContainerRenderResult {
-        let maybe_cursor = self.layer.on_render(gl, event, manager).get_cursor();
+    fn render(&mut self, gl: &WebGlRenderingContext, manager: &ContainerManager) -> ContainerRenderResult {
+        let maybe_cursor = self.layer.on_render(gl, manager).get_cursor();
         match maybe_cursor {
             Some(cursor) => cursor,
             None => Cursor::DEFAULT

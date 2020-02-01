@@ -3,8 +3,6 @@ use crate::*;
 use std::cell::RefCell;
 use std::rc::Weak;
 
-use wasmuri_events::UpdateEvent;
-
 pub struct UpdateManager {
 
     behaviors: Vec<Weak<RefCell<dyn ComponentBehavior>>>
@@ -22,11 +20,11 @@ impl UpdateManager {
         self.behaviors.push(behavior);
     }
 
-    pub fn fire_update(&mut self, event: &UpdateEvent, manager: &ContainerManager){
+    pub fn fire_update(&mut self, manager: &ContainerManager){
         self.behaviors.drain_filter(|handle| {
             match handle.upgrade() {
                 Some(component_cell) => {
-                    component_cell.borrow_mut().update(&mut UpdateParams::new(event, manager));
+                    component_cell.borrow_mut().update(&mut UpdateParams::new(manager));
                     false
                 }, None => true
             }

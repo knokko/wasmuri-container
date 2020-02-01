@@ -116,10 +116,10 @@ impl Layer for SimpleLayer {
         self.consumable_result(move_result)
     }
 
-    fn on_mouse_click(&mut self, button: i16, manager: &ContainerManager) -> EventResult {
+    fn on_mouse_click(&mut self, click: ClickInfo, manager: &ContainerManager) -> EventResult {
         match self.mouse_pos {
-            Some(mouse_pos) => self.mouse_manager.fire_mouse_click(manager, mouse_pos, button), 
-            None => self.mouse_manager.fire_mouse_click_outside(manager, button)
+            Some(mouse_pos) => self.mouse_manager.fire_mouse_click(manager, mouse_pos, click), 
+            None => self.mouse_manager.fire_mouse_click_outside(manager, click)
         };
         self.check_agents()
     }
@@ -139,8 +139,8 @@ impl Layer for SimpleLayer {
         self.consumable_result(key_up_result)
     }
 
-    fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult {
-        self.update_manager.fire_update(event, manager);
+    fn on_update(&mut self, manager: &ContainerManager) -> EventResult {
+        self.update_manager.fire_update(manager);
 
         self.check_agents()
     }
@@ -153,8 +153,8 @@ impl Layer for SimpleLayer {
         self.render_manager.force_partial_render(regions)
     }
 
-    fn on_render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult {
-        let render_result = self.render_manager.render(gl, event, manager, self.mouse_pos);
+    fn on_render(&mut self, gl: &WebGlRenderingContext, manager: &ContainerManager) -> RenderResult {
+        let render_result = self.render_manager.render(gl, manager, self.mouse_pos);
 
         // TODO Hm... what about components that did not re-render?
         self.last_render_actions = render_result.1;

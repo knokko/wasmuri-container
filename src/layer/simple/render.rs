@@ -6,7 +6,6 @@ use std::rc::*;
 use web_sys::*;
 
 use wasmuri_core::*;
-use wasmuri_events::*;
 
 struct RenderHandle {
     
@@ -117,7 +116,7 @@ impl RenderManager {
         render_actions
     }
 
-    pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &'a ContainerManager, 
+    pub fn render<'a>(&mut self, gl: &WebGlRenderingContext, manager: &'a ContainerManager, 
             mouse_position: Option<(f32,f32)>) -> (RenderResult, Vec<PassedRenderAction>) {
 
         let mut render_actions = Vec::new();
@@ -168,7 +167,7 @@ impl RenderManager {
                         agent.set_rendering();
                         drop(agent);
 
-                        let mut local_render_result = component_handle.render(&mut RenderParams::new(gl, event, manager));
+                        let mut local_render_result = component_handle.render(&mut RenderParams::new(gl, manager));
                         let mut local_render_actions = local_render_result.get_render_actions();
 
                         // If we have a background, we will render the entire viewport anyway, so adding a part of the viewport to it is useless
@@ -184,7 +183,7 @@ impl RenderManager {
                     } else {
 
                         if mouse_position.is_some() && handle.region.is_float_inside(mouse_position.unwrap()) {
-                            cursor_result = component_handle.get_cursor(&mut CursorParams::new(event, manager));
+                            cursor_result = component_handle.get_cursor(&mut CursorParams::new(manager));
                         }
 
                         if !has_background {

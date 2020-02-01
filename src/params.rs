@@ -2,9 +2,7 @@ use crate::ContainerManager;
 
 use wasmuri_events::{
     KeyDownEvent,
-    KeyUpEvent,
-    RenderEvent,
-    UpdateEvent
+    KeyUpEvent
 };
 
 use web_sys::WebGlRenderingContext;
@@ -44,16 +42,16 @@ impl<'a> KeyUpParams<'a> {
 pub struct MouseClickParams<'a> {
 
     pub mouse_pos: (f32,f32), 
-    pub button: i16,
+    pub click: ClickInfo,
     pub manager: &'a ContainerManager
 }
 
 impl<'a> MouseClickParams<'a> {
 
-    pub fn new(mouse_pos: (f32,f32), button: i16, manager: &'a ContainerManager) -> MouseClickParams<'a> {
+    pub fn new(mouse_pos: (f32,f32), click: ClickInfo, manager: &'a ContainerManager) -> MouseClickParams<'a> {
         MouseClickParams {
             mouse_pos,
-            button,
+            click,
             manager
         }
     }
@@ -61,15 +59,15 @@ impl<'a> MouseClickParams<'a> {
 
 pub struct MouseClickOutParams<'a> {
 
-    pub button: i16,
+    pub click: ClickInfo,
     pub manager: &'a ContainerManager
 }
 
 impl<'a> MouseClickOutParams<'a> {
 
-    pub fn new(button: i16, manager: &'a ContainerManager) -> MouseClickOutParams<'a> {
+    pub fn new(click: ClickInfo, manager: &'a ContainerManager) -> MouseClickOutParams<'a> {
         MouseClickOutParams {
-            button,
+            click,
             manager
         }
     }
@@ -116,16 +114,14 @@ impl<'a> MouseScrollParams<'a> {
 pub struct RenderParams<'a> {
 
     pub gl: &'a WebGlRenderingContext, 
-    pub event: &'a RenderEvent, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> RenderParams<'a> {
 
-    pub fn new(gl: &'a WebGlRenderingContext, event: &'a RenderEvent, manager: &'a ContainerManager) -> RenderParams<'a> {
+    pub fn new(gl: &'a WebGlRenderingContext, manager: &'a ContainerManager) -> RenderParams<'a> {
         RenderParams {
             gl,
-            event,
             manager
         }
     }
@@ -133,15 +129,13 @@ impl<'a> RenderParams<'a> {
 
 pub struct CursorParams<'a> {
 
-    pub event: &'a RenderEvent, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> CursorParams<'a> {
 
-    pub fn new(event: &'a RenderEvent, manager: &'a ContainerManager) -> CursorParams<'a> {
+    pub fn new(manager: &'a ContainerManager) -> CursorParams<'a> {
         CursorParams {
-            event,
             manager
         }
     }
@@ -149,16 +143,57 @@ impl<'a> CursorParams<'a> {
 
 pub struct UpdateParams<'a> {
 
-    pub event: &'a UpdateEvent, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> UpdateParams<'a> {
 
-    pub fn new(event: &'a UpdateEvent, manager: &'a ContainerManager) -> UpdateParams<'a> {
+    pub fn new(manager: &'a ContainerManager) -> UpdateParams<'a> {
         UpdateParams {
-            event,
             manager
         }
+    }
+}
+
+#[derive(Clone,Copy)]
+pub struct ClickInfo {
+
+    button: i16,
+    control_down: bool,
+    shift_down: bool,
+    alt_down: bool,
+    meta_down: bool
+}
+
+impl ClickInfo {
+
+    pub fn new(button: i16, control_down: bool, shift_down: bool, alt_down: bool, meta_down: bool) -> ClickInfo {
+        ClickInfo {
+            button,
+            control_down,
+            shift_down,
+            alt_down,
+            meta_down
+        }
+    }
+
+    pub fn get_button(&self) -> i16 {
+        self.button
+    }
+
+    pub fn is_control_down(&self) -> bool {
+        self.control_down
+    }
+
+    pub fn is_shift_down(&self) -> bool {
+        self.shift_down
+    }
+
+    pub fn is_alt_down(&self) -> bool {
+        self.alt_down
+    }
+
+    pub fn is_meta_down(&self) -> bool {
+        self.meta_down
     }
 }

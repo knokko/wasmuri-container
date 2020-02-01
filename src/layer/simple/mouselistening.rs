@@ -180,15 +180,15 @@ impl MouseManager {
         });
     }
 
-    pub fn fire_mouse_click(&mut self, manager: &ContainerManager, mouse_pos: (f32,f32), button: i16) {
+    pub fn fire_mouse_click(&mut self, manager: &ContainerManager, mouse_pos: (f32,f32), click: ClickInfo) {
 
         self.area_click_listeners.drain_filter(|handle| {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
                     if handle.region.is_float_inside(mouse_pos) {
-                        component_cell.borrow_mut().mouse_click_inside(&mut MouseClickParams::new(mouse_pos, button, manager));
+                        component_cell.borrow_mut().mouse_click_inside(&mut MouseClickParams::new(mouse_pos, click, manager));
                     } else {
-                        component_cell.borrow_mut().mouse_click_outside(&mut MouseClickOutParams::new(button, manager));
+                        component_cell.borrow_mut().mouse_click_outside(&mut MouseClickOutParams::new(click, manager));
                     }
                     false
                 }, None => true
@@ -198,18 +198,18 @@ impl MouseManager {
         self.full_click_listeners.drain_filter(|handle| {
             match handle.upgrade() {
                 Some(component_cell) => {
-                    component_cell.borrow_mut().mouse_click_anywhere(&mut MouseClickAnyParams::new(button, manager));
+                    component_cell.borrow_mut().mouse_click_anywhere(&mut MouseClickAnyParams::new(click, manager));
                     false
                 }, None => true
             }
         });
     }
 
-    pub fn fire_mouse_click_outside(&mut self, manager: &ContainerManager, button: i16) {
+    pub fn fire_mouse_click_outside(&mut self, manager: &ContainerManager, click: ClickInfo) {
         self.area_click_listeners.drain_filter(|handle| {
             match handle.behavior.upgrade() {
                 Some(component_cell) => {
-                    component_cell.borrow_mut().mouse_click_outside(&mut MouseClickOutParams::new(button, manager));
+                    component_cell.borrow_mut().mouse_click_outside(&mut MouseClickOutParams::new(click, manager));
                     false
                 }, None => true
             }
@@ -218,7 +218,7 @@ impl MouseManager {
         self.full_click_listeners.drain_filter(|handle| {
             match handle.upgrade() {
                 Some(component_cell) => {
-                    component_cell.borrow_mut().mouse_click_anywhere(&mut MouseClickOutParams::new(button, manager));
+                    component_cell.borrow_mut().mouse_click_anywhere(&mut MouseClickOutParams::new(click, manager));
                     false
                 }, None => true
             }

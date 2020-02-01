@@ -19,12 +19,14 @@ pub use handle::*;
 pub use render::*;
 pub use simple::*;
 
+
+
 pub trait Layer {
 
     /// If the event is consumed, the remaining layers will get passed a new_pos of None
     fn on_mouse_move(&mut self, new_pos: Option<(f32, f32)>, manager: &ContainerManager) -> ConsumableEventResult;
 
-    fn on_mouse_click(&mut self, button: i16, manager: &ContainerManager) -> EventResult;
+    fn on_mouse_click(&mut self, click: ClickInfo, manager: &ContainerManager) -> EventResult;
 
     fn on_mouse_scroll(&mut self, delta: f64, manager: &ContainerManager) -> ConsumableEventResult;
 
@@ -32,13 +34,13 @@ pub trait Layer {
 
     fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> ConsumableEventResult;
 
-    fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult;
+    fn on_update(&mut self, manager: &ContainerManager) -> EventResult;
 
     fn predict_render(&mut self) -> Vec<PlannedRenderAction>;
 
     fn force_partial_render(&mut self, regions: &[Region]) -> Vec<PlannedRenderAction>;
 
-    fn on_render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> RenderResult;
+    fn on_render(&mut self, gl: &WebGlRenderingContext, manager: &ContainerManager) -> RenderResult;
 
     /// Ensures that all components in this layer will render during the next call to on_render()
     fn force_render(&mut self);

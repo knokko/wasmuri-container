@@ -210,7 +210,8 @@ impl Listener<MouseClickEvent> for ContainerManager {
             Some(current_container) => {
 
                 let mut claim_container = current_container.borrow_mut();
-                claim_container.on_mouse_click(event, self)
+                claim_container.on_mouse_click(ClickInfo::new(event.mouse_event.button(), event.mouse_event.ctrl_key(), 
+                        event.mouse_event.shift_key(), event.mouse_event.alt_key(), event.mouse_event.meta_key()), self)
             }, None => None
         });
     }
@@ -245,12 +246,12 @@ impl Listener<MouseScrollEvent> for ContainerManager {
 
 impl Listener<UpdateEvent> for ContainerManager {
 
-    fn process(&mut self, event: &UpdateEvent){
+    fn process(&mut self, _event: &UpdateEvent){
         self.process_result(match &self.current_container {
             Some(current_container) => {
 
                 let mut claim_container = current_container.borrow_mut();
-                claim_container.on_update(event, self)
+                claim_container.on_update(self)
             }, None => None
         });
     }
@@ -281,12 +282,12 @@ impl Listener<ResizeEvent> for ContainerManager {
 
 impl Listener<RenderEvent> for ContainerManager {
 
-    fn process(&mut self, event: &RenderEvent){
+    fn process(&mut self, _event: &RenderEvent){
         match &self.current_container {
             Some(current_container) => {
 
                 let mut claim_container = current_container.borrow_mut();
-                let result = claim_container.render(&self.gl, event, self);
+                let result = claim_container.render(&self.gl, self);
 
                 let change_cursor;
                 if self.prev_cursor.is_none() {

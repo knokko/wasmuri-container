@@ -73,14 +73,14 @@ impl Container for LayeredContainer {
         None
     }
 
-    fn on_mouse_click(&mut self, event: &MouseClickEvent, manager: &ContainerManager) -> EventResult {
+    fn on_mouse_click(&mut self, click: ClickInfo, manager: &ContainerManager) -> EventResult {
 
         let mut next_container = None;
 
         for layer in &mut self.layers {
 
             // If multiple layers request a container change, layers in the front will get priority
-            let click_result = layer.on_mouse_click(event.mouse_event.button(), manager);
+            let click_result = layer.on_mouse_click(click, manager);
             if click_result.is_some() {
                 next_container = click_result;
             }
@@ -127,11 +127,11 @@ impl Container for LayeredContainer {
         None
     }
 
-    fn on_update(&mut self, event: &UpdateEvent, manager: &ContainerManager) -> EventResult {
+    fn on_update(&mut self, manager: &ContainerManager) -> EventResult {
         let mut next_container = None;
 
         for layer in &mut self.layers.iter_mut().rev() {
-            let requested_container = layer.on_update(event, manager);
+            let requested_container = layer.on_update(manager);
 
             // The foreground layers will get priority if multiplie layers request a container change
             if requested_container.is_some() && next_container.is_none() {
@@ -142,7 +142,7 @@ impl Container for LayeredContainer {
         next_container
     }
 
-    fn render(&mut self, gl: &WebGlRenderingContext, event: &RenderEvent, manager: &ContainerManager) -> ContainerRenderResult {
+    fn render(&mut self, gl: &WebGlRenderingContext, manager: &ContainerManager) -> ContainerRenderResult {
 
         // First find out which regions are going to be rendered with which opacity initially
         let mut rerender_actions = Vec::with_capacity(self.layers.len());
@@ -229,7 +229,7 @@ impl Container for LayeredContainer {
         let mut maybe_cursor = None;
 
         for layer in &mut self.layers {
-            let requested_cursor = layer.on_render(gl, event, manager).get_cursor();
+            let requested_cursor = layer.on_render(gl, manager).get_cursor();
 
             if maybe_cursor.is_none() && requested_cursor.is_some() {
                 maybe_cursor = requested_cursor;
