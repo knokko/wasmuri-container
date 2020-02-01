@@ -10,8 +10,6 @@ use std::rc::Rc;
 
 use wasmuri_core::*;
 
-use wasmuri_events::*;
-
 use web_sys::WebGlRenderingContext;
 
 pub use agent::*;
@@ -30,9 +28,9 @@ pub trait Layer {
 
     fn on_mouse_scroll(&mut self, delta: f64, manager: &ContainerManager) -> ConsumableEventResult;
 
-    fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> ConsumableEventResult;
+    fn on_key_down(&mut self, keys: &KeyInfo, manager: &ContainerManager) -> ConsumableEventResult;
 
-    fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> ConsumableEventResult;
+    fn on_key_up(&mut self, keys: &KeyInfo, manager: &ContainerManager) -> ConsumableEventResult;
 
     fn on_update(&mut self, manager: &ContainerManager) -> EventResult;
 

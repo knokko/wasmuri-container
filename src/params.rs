@@ -1,23 +1,18 @@
 use crate::ContainerManager;
 
-use wasmuri_events::{
-    KeyDownEvent,
-    KeyUpEvent
-};
-
 use web_sys::WebGlRenderingContext;
 
 pub struct KeyDownParams<'a> {
 
-    pub event: &'a KeyDownEvent, 
+    pub keys: &'a KeyInfo, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> KeyDownParams<'a> {
 
-    pub fn new(event: &'a KeyDownEvent, manager: &'a ContainerManager) -> KeyDownParams<'a> {
+    pub fn new(keys: &'a KeyInfo, manager: &'a ContainerManager) -> KeyDownParams<'a> {
         KeyDownParams {
-            event,
+            keys,
             manager
         }
     }
@@ -25,15 +20,15 @@ impl<'a> KeyDownParams<'a> {
 
 pub struct KeyUpParams<'a> {
 
-    pub event: &'a KeyUpEvent, 
+    pub keys: &'a KeyInfo, 
     pub manager: &'a ContainerManager
 }
 
 impl<'a> KeyUpParams<'a> {
 
-    pub fn new(event: &'a KeyUpEvent, manager: &'a ContainerManager) -> KeyUpParams<'a> {
+    pub fn new(keys: &'a KeyInfo, manager: &'a ContainerManager) -> KeyUpParams<'a> {
         KeyUpParams {
-            event,
+            keys,
             manager
         }
     }
@@ -179,6 +174,48 @@ impl ClickInfo {
 
     pub fn get_button(&self) -> i16 {
         self.button
+    }
+
+    pub fn is_control_down(&self) -> bool {
+        self.control_down
+    }
+
+    pub fn is_shift_down(&self) -> bool {
+        self.shift_down
+    }
+
+    pub fn is_alt_down(&self) -> bool {
+        self.alt_down
+    }
+
+    pub fn is_meta_down(&self) -> bool {
+        self.meta_down
+    }
+}
+
+pub struct KeyInfo {
+
+    key: String,
+    control_down: bool,
+    shift_down: bool,
+    alt_down: bool,
+    meta_down: bool
+}
+
+impl KeyInfo {
+
+    pub fn new(key: String, control_down: bool, shift_down: bool, alt_down: bool, meta_down: bool) -> KeyInfo {
+        KeyInfo {
+            key,
+            control_down,
+            shift_down,
+            alt_down,
+            meta_down
+        }
+    }
+
+    pub fn get_key(&self) -> &str {
+        &self.key
     }
 
     pub fn is_control_down(&self) -> bool {

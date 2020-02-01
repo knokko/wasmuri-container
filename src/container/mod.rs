@@ -12,9 +12,9 @@ pub use layered::*;
 
 pub trait Container : std::fmt::Debug {
     
-    fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> EventResult;
+    fn on_key_down(&mut self, event: &KeyInfo, manager: &ContainerManager) -> EventResult;
 
-    fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> EventResult;
+    fn on_key_up(&mut self, event: &KeyInfo, manager: &ContainerManager) -> EventResult;
 
     fn on_mouse_click(&mut self, click: ClickInfo, manager: &ContainerManager) -> EventResult;
 

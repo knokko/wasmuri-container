@@ -34,12 +34,12 @@ impl std::fmt::Debug for FlatContainer {
 
 impl Container for FlatContainer {
 
-    fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> EventResult {
-        self.layer.on_key_down(event, manager).as_normal_result()
+    fn on_key_down(&mut self, keys: &KeyInfo, manager: &ContainerManager) -> EventResult {
+        self.layer.on_key_down(keys, manager).as_normal_result()
     }
 
-    fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> EventResult {
-        self.layer.on_key_up(event, manager).as_normal_result()
+    fn on_key_up(&mut self, keys: &KeyInfo, manager: &ContainerManager) -> EventResult {
+        self.layer.on_key_up(keys, manager).as_normal_result()
     }
 
     fn on_mouse_click(&mut self, click: ClickInfo, manager: &ContainerManager) -> EventResult {

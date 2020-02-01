@@ -4,7 +4,6 @@ use std::cell::RefCell;
 use std::rc::Weak;
 
 use wasmuri_core::Region;
-use wasmuri_events::*;
 
 struct KeyListenHandle { 
 
@@ -36,19 +35,19 @@ trait EventProcessor<T> {
 
 struct KeyDownProcessor {}
 
-impl EventProcessor<KeyDownEvent> for KeyDownProcessor {
+impl EventProcessor<KeyInfo> for KeyDownProcessor {
 
-    fn process(&self, handle: &mut dyn ComponentBehavior, event: &KeyDownEvent, manager: &ContainerManager) -> bool {
-        handle.key_down(&mut KeyDownParams::new(event, manager))
+    fn process(&self, handle: &mut dyn ComponentBehavior, keys: &KeyInfo, manager: &ContainerManager) -> bool {
+        handle.key_down(&mut KeyDownParams::new(keys, manager))
     }
 }
 
 struct KeyUpProcessor {}
 
-impl EventProcessor<KeyUpEvent> for KeyUpProcessor {
+impl EventProcessor<KeyInfo> for KeyUpProcessor {
 
-    fn process(&self, handle: &mut dyn ComponentBehavior, event: &KeyUpEvent, manager: &ContainerManager) -> bool {
-        handle.key_up(&mut KeyUpParams::new(event, manager))
+    fn process(&self, handle: &mut dyn ComponentBehavior, keys: &KeyInfo, manager: &ContainerManager) -> bool {
+        handle.key_up(&mut KeyUpParams::new(keys, manager))
     }
 }
 
@@ -126,12 +125,12 @@ impl KeyListenManager {
         });
     }
 
-    pub fn fire_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager, mouse_pos: Option<(f32, f32)>) -> bool {
-        KeyListenManager::fire(&mut self.hover_down_listeners, &mut self.full_down_listeners, &KeyDownProcessor {}, event, manager, mouse_pos)
+    pub fn fire_key_down(&mut self, keys: &KeyInfo, manager: &ContainerManager, mouse_pos: Option<(f32, f32)>) -> bool {
+        KeyListenManager::fire(&mut self.hover_down_listeners, &mut self.full_down_listeners, &KeyDownProcessor {}, &keys, manager, mouse_pos)
     }
 
-    pub fn fire_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager, mouse_pos: Option<(f32, f32)>) -> bool {
-        KeyListenManager::fire(&mut self.hover_up_listeners, &mut self.full_up_listeners, &KeyUpProcessor {}, event, manager, mouse_pos)
+    pub fn fire_key_up(&mut self, keys: &KeyInfo, manager: &ContainerManager, mouse_pos: Option<(f32, f32)>) -> bool {
+        KeyListenManager::fire(&mut self.hover_up_listeners, &mut self.full_up_listeners, &KeyUpProcessor {}, &keys, manager, mouse_pos)
     }
 
     fn fire<T>(hover_listeners: &mut Vec<HoverListenHandle>, full_listeners: &mut Vec<KeyListenHandle>, processor: &dyn EventProcessor<T>, 

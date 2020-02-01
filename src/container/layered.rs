@@ -39,9 +39,9 @@ impl std::fmt::Debug for LayeredContainer {
 
 impl Container for LayeredContainer {
 
-    fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> EventResult {
+    fn on_key_down(&mut self, keys: &KeyInfo, manager: &ContainerManager) -> EventResult {
         for layer in &mut self.layers.iter_mut().rev() {
-            let key_down_result = layer.on_key_down(event, manager);
+            let key_down_result = layer.on_key_down(keys, manager);
             
             // If a container change was requested, it is guaranteed that the event was consumed
             if key_down_result.requested_container_change() {
@@ -56,9 +56,9 @@ impl Container for LayeredContainer {
         None
     }
 
-    fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> EventResult {
+    fn on_key_up(&mut self, keys: &KeyInfo, manager: &ContainerManager) -> EventResult {
         for layer in &mut self.layers.iter_mut().rev() {
-            let key_up_result = layer.on_key_up(event, manager);
+            let key_up_result = layer.on_key_up(keys, manager);
 
             // If a container change was requested, it is guaranteed that the event was consumed
             if key_up_result.requested_container_change() {

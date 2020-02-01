@@ -184,7 +184,8 @@ impl Listener<KeyDownEvent> for ContainerManager {
             Some(current_container) => {
 
                 let mut claim_container = current_container.borrow_mut();
-                claim_container.on_key_down(event, self)
+                claim_container.on_key_down(&KeyInfo::new(event.key_event.key(), event.key_event.ctrl_key(), event.key_event.shift_key(), 
+                        event.key_event.alt_key(), event.key_event.meta_key()), self)
             }, None => None
         });
     }
@@ -197,7 +198,8 @@ impl Listener<KeyUpEvent> for ContainerManager {
             Some(current_container) => {
 
                 let mut claim_container = current_container.borrow_mut();
-                claim_container.on_key_up(event, self)
+                claim_container.on_key_up(&KeyInfo::new(event.key_event.key(), event.key_event.ctrl_key(), event.key_event.shift_key(), 
+                        event.key_event.alt_key(), event.key_event.meta_key()), self)
             }, None => None
         });
     }

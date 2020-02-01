@@ -15,8 +15,6 @@ use std::rc::Rc;
 
 use wasmuri_core::*;
 
-use wasmuri_events::*;
-
 use web_sys::WebGlRenderingContext;
 
 pub struct SimpleLayer {
@@ -129,13 +127,13 @@ impl Layer for SimpleLayer {
         self.consumable_result(scroll_result)
     }
 
-    fn on_key_down(&mut self, event: &KeyDownEvent, manager: &ContainerManager) -> ConsumableEventResult {
-        let key_down_result = self.key_manager.fire_key_down(event, manager, self.mouse_pos);
+    fn on_key_down(&mut self, keys: &KeyInfo, manager: &ContainerManager) -> ConsumableEventResult {
+        let key_down_result = self.key_manager.fire_key_down(keys, manager, self.mouse_pos);
         self.consumable_result(key_down_result)
     }
 
-    fn on_key_up(&mut self, event: &KeyUpEvent, manager: &ContainerManager) -> ConsumableEventResult {
-        let key_up_result = self.key_manager.fire_key_up(event, manager, self.mouse_pos);
+    fn on_key_up(&mut self, keys: &KeyInfo, manager: &ContainerManager) -> ConsumableEventResult {
+        let key_up_result = self.key_manager.fire_key_up(keys, manager, self.mouse_pos);
         self.consumable_result(key_up_result)
     }
 
