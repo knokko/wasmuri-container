@@ -3,7 +3,7 @@ use crate::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use wasmuri_core::util::Region;
+use wasmuri_core::Region;
 
 pub struct ComponentAgent {
 

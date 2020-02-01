@@ -8,7 +8,7 @@ mod simple;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use wasmuri_core::util::*;
+use wasmuri_core::*;
 
 use wasmuri_events::*;
 

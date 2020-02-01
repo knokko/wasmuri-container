@@ -5,8 +5,7 @@ use std::rc::*;
 
 use web_sys::*;
 
-use wasmuri_core::color::Color;
-use wasmuri_core::util::Region;
+use wasmuri_core::*;
 use wasmuri_events::*;
 
 struct RenderHandle {

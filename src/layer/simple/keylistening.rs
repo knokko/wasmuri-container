@@ -3,7 +3,7 @@ use crate::*;
 use std::cell::RefCell;
 use std::rc::Weak;
 
-use wasmuri_core::util::Region;
+use wasmuri_core::Region;
 use wasmuri_events::*;
 
 struct KeyListenHandle { 

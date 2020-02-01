@@ -3,7 +3,7 @@ use std::rc::Weak;
 
 use crate::*;
 
-use wasmuri_core::util::Region;
+use wasmuri_core::Region;
 
 struct RegionHandle {
 
