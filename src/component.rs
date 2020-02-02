@@ -79,6 +79,21 @@ pub trait ComponentBehavior {
         false
     }
 
+    fn on_copy(&mut self) -> Option<ClipboardData> {
+        None
+    }
+
+    /// Returns true if this component changed due to the paste event and false if it stayed the same. 
+    /// If true is returned, the paste event won't be passed on to other components to avoid the situation
+    /// where the clipboard data is pasted onto multiple components.
+    fn on_paste(&mut self, _clipboard: &ClipboardData) -> bool {
+        false
+    }
+
+    fn on_cut(&mut self) -> Option<ClipboardData> {
+        None
+    }
+
     fn render(&mut self, _params: &mut RenderParams) -> BehaviorRenderResult {
         BehaviorRenderResult::without_cursor(Vec::with_capacity(0))
     }

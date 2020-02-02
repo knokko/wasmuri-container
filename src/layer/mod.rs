@@ -32,6 +32,12 @@ pub trait Layer {
 
     fn on_key_up(&mut self, keys: &KeyInfo, manager: &ContainerManager) -> ConsumableEventResult;
 
+    fn on_copy(&mut self) -> Option<ClipboardData>;
+
+    fn on_paste(&mut self, clipboard: &ClipboardData) -> bool;
+
+    fn on_cut(&mut self) -> Option<ClipboardData>;
+
     fn on_update(&mut self, manager: &ContainerManager) -> EventResult;
 
     fn predict_render(&mut self) -> Vec<PlannedRenderAction>;
@@ -75,6 +81,12 @@ pub trait LayerAgent {
     fn make_mouse_move_listener(&mut self);
 
     fn make_mouse_click_listener(&mut self);
+
+    fn make_copy_listener(&mut self, priority: i8);
+
+    fn make_paste_listener(&mut self, priority: i8);
+
+    fn make_cut_listener(&mut self, priority: i8);
 
     fn make_update_listener(&mut self);
 }

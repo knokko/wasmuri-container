@@ -127,6 +127,38 @@ impl Container for LayeredContainer {
         None
     }
 
+    fn on_copy(&mut self) -> Option<ClipboardData> {
+        for layer in &mut self.layers.iter_mut().rev() {
+            let maybe_data = layer.on_copy();
+            if maybe_data.is_some() {
+                return maybe_data;
+            }
+        }
+
+        None
+    }
+
+    fn on_paste(&mut self, clipboard: &ClipboardData) -> bool {
+        for layer in &mut self.layers.iter_mut().rev() {
+            if layer.on_paste(clipboard) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    fn on_cut(&mut self) -> Option<ClipboardData> {
+        for layer in &mut self.layers.iter_mut().rev() {
+            let maybe_data = layer.on_cut();
+            if maybe_data.is_some() {
+                return maybe_data;
+            }
+        }
+
+        None
+    }
+
     fn on_update(&mut self, manager: &ContainerManager) -> EventResult {
         let mut next_container = None;
 

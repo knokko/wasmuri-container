@@ -54,6 +54,18 @@ impl Container for FlatContainer {
         self.layer.on_mouse_scroll(event.mouse_event.delta_y(), manager).as_normal_result()
     }
 
+    fn on_copy(&mut self) -> Option<ClipboardData> {
+        self.layer.on_copy()
+    }
+
+    fn on_paste(&mut self, clipboard: &ClipboardData) -> bool {
+        self.layer.on_paste(clipboard)
+    }
+
+    fn on_cut(&mut self) -> Option<ClipboardData> {
+        self.layer.on_cut()
+    }
+
     fn on_update(&mut self, manager: &ContainerManager) -> EventResult {
         self.layer.on_update(manager)
     }

@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use wasm_bindgen::JsCast;
 
+use wasmuri_core::print;
 use wasmuri_events::*;
 
 use wasmuri_text::TextRenderer;
@@ -127,6 +128,9 @@ impl ContainerManager {
         start_listen(&manager_cell, &RESIZE_HANDLER);
         start_listen(&manager_cell, &UPDATE_HANDLER);
         start_listen(&manager_cell, &RENDER_HANDLER);
+        start_listen(&manager_cell, &COPY_HANDLER);
+        start_listen(&manager_cell, &PASTE_HANDLER);
+        start_listen(&manager_cell, &CUT_HANDLER);
 
         if leak_self {
             std::mem::forget(Rc::clone(&manager_cell))
@@ -304,6 +308,83 @@ impl Listener<RenderEvent> for ContainerManager {
                     css.set_property("cursor", &result.to_css_value()).expect("Should be able to set cursor property");
                     self.prev_cursor = Some(result);
                 }
+            }, None => {}
+        }
+    }
+}
+
+impl Listener<CopyEvent> for ContainerManager {
+
+    fn process(&mut self, event: &CopyEvent) {
+        match &self.current_container {
+            Some(current_container) => {
+
+                let mut claim_container = current_container.borrow_mut();
+                match event.clipboard_event.clipboard_data() {
+                    Some(clipboard) => {
+                        match claim_container.on_copy() {
+                            Some(to_copy) => {
+                                match to_copy {
+                                    ClipboardData::Text(the_text) => {
+                                         if clipboard.set_data("text", &the_text).is_err() {
+                                              print("Failed to copy data to clipboard during copy event");
+                                         }
+                                    }
+                                };
+                                event.clipboard_event.prevent_default();
+                            }, None => {}
+                        };
+                    }, None => print("No clipboard data on copy event?")
+                };
+            }, None => {}
+        }
+    }
+}
+
+impl Listener<PasteEvent> for ContainerManager {
+
+    fn process(&mut self, event: &PasteEvent) {
+        match &self.current_container {
+            Some(current_container) => {
+
+                let mut claim_container = current_container.borrow_mut();
+                match event.clipboard_event.clipboard_data() {
+                    Some(clipboard) => {
+                        match clipboard.get_data("text") {
+                            Ok(the_text) => {
+                                claim_container.on_paste(&ClipboardData::Text(the_text));
+                            }, Err(_) => { /* No text was pasted, but something else. */ }
+                        }
+                    }, None => print("No clipboard data on paste event?")
+                };
+            }, None => {}
+        }
+    }
+}
+
+impl Listener<CutEvent> for ContainerManager {
+
+    fn process(&mut self, event: &CutEvent) {
+        match &self.current_container {
+            Some(current_container) => {
+
+                let mut claim_container = current_container.borrow_mut();
+                match event.clipboard_event.clipboard_data() {
+                    Some(clipboard) => {
+                        match claim_container.on_cut() {
+                            Some(to_cut) => {
+                                match to_cut {
+                                    ClipboardData::Text(the_text) => {
+                                         if clipboard.set_data("text", &the_text).is_err() {
+                                             print("Failed to copy data to clipboard during cut event");
+                                         }
+                                    }
+                                };
+                                event.clipboard_event.prevent_default();
+                            }, None => {}
+                        };
+                    }, None => print("No clipboard data on cut event?")
+                };
             }, None => {}
         }
     }

@@ -14,4 +14,4 @@ wasmuri-text = { path = "../text" }
 
 [dependencies.web-sys]
 version = "0.3"
-features = [ "CssStyleDeclaration", "HtmlElement", "HtmlCanvasElement", "WebGlRenderingContext" ]
+features = [ "CssStyleDeclaration", "HtmlElement", "HtmlCanvasElement", "WebGlRenderingContext", "DataTransfer" ]

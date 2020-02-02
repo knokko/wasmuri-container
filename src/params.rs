@@ -234,3 +234,8 @@ impl KeyInfo {
         self.meta_down
     }
 }
+
+pub enum ClipboardData {
+
+    Text(String)
+}

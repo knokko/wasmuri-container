@@ -4,11 +4,13 @@ mod update;
 mod render;
 mod keylistening;
 mod mouselistening;
+mod clipboardlistening;
 
 use render::RenderManager;
 use update::UpdateManager;
 use keylistening::KeyListenManager;
 use mouselistening::MouseManager;
+use clipboardlistening::*;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -23,6 +25,7 @@ pub struct SimpleLayer {
 
     key_manager: KeyListenManager,
     mouse_manager: MouseManager,
+    clipboard_manager: ClipboardManager,
     update_manager: UpdateManager,
     render_manager: RenderManager,
 
@@ -38,6 +41,7 @@ impl SimpleLayer {
 
             render_manager: RenderManager::new(background_color),
             update_manager: UpdateManager::new(),
+            clipboard_manager: ClipboardManager::new(),
             key_manager: KeyListenManager::new(),
             mouse_manager: MouseManager::new(),
 
@@ -137,6 +141,18 @@ impl Layer for SimpleLayer {
         self.consumable_result(key_up_result)
     }
 
+    fn on_copy(&mut self) -> Option<ClipboardData> {
+        self.clipboard_manager.fire_copy_event()
+    }
+
+    fn on_paste(&mut self, clipboard: &ClipboardData) -> bool {
+        self.clipboard_manager.fire_paste_event(clipboard)
+    }
+
+    fn on_cut(&mut self) -> Option<ClipboardData> {
+        self.clipboard_manager.fire_cut_event()
+    }
+
     fn on_update(&mut self, manager: &ContainerManager) -> EventResult {
         self.update_manager.fire_update(manager);
 
@@ -186,6 +202,10 @@ impl Layer for SimpleLayer {
             let mouse_move_space = agent.mouse_move_space;
             let mouse_move_in_out_space = agent.mouse_move_in_out_space;
             let mouse_move_global = agent.mouse_move_global;
+
+            let copy_priority = agent.copy_priority;
+            let paste_priority = agent.paste_priority;
+            let cut_priority = agent.cut_priority;
 
             let receive_updates = agent.receive_updates;
 
@@ -253,6 +273,18 @@ impl Layer for SimpleLayer {
                 }, None => {}
             };
 
+            if copy_priority.is_some() {
+                self.clipboard_manager.add_copy_listener(Rc::downgrade(&behavior), copy_priority.unwrap());
+            }
+
+            if paste_priority.is_some() {
+                self.clipboard_manager.add_paste_listener(Rc::downgrade(&behavior), paste_priority.unwrap());
+            }
+
+            if cut_priority.is_some() {
+                self.clipboard_manager.add_cut_listener(Rc::downgrade(&behavior), cut_priority.unwrap());
+            }
+
             if mouse_move_global {
                 self.mouse_manager.add_full_move_listener(Rc::downgrade(&behavior));
             }
@@ -284,6 +316,10 @@ pub struct SimpleLayerAgent<'a> {
     mouse_scroll_space: Option<Region>,
     mouse_scroll_priority: Option<i8>,
 
+    copy_priority: Option<i8>,
+    paste_priority: Option<i8>,
+    cut_priority: Option<i8>,
+
     mouse_move_space: Option<Region>,
     mouse_move_in_out_space: Option<Region>,
     mouse_move_global: bool,
@@ -314,6 +350,10 @@ impl<'a> SimpleLayerAgent<'a> {
             mouse_move_space: None,
             mouse_move_in_out_space: None,
             mouse_move_global: false,
+
+            copy_priority: None,
+            paste_priority: None,
+            cut_priority: None,
 
             receive_updates: false
         }
@@ -411,6 +451,18 @@ impl<'a> LayerAgent for SimpleLayerAgent<'a> {
 
     fn make_mouse_click_listener(&mut self){
         self.mouse_click_global = true;
+    }
+
+    fn make_copy_listener(&mut self, priority: i8) {
+        self.copy_priority = Some(priority);
+    }
+
+    fn make_paste_listener(&mut self, priority: i8) {
+        self.paste_priority = Some(priority);
+    }
+
+    fn make_cut_listener(&mut self, priority: i8) {
+        self.cut_priority = Some(priority);
     }
 
     fn make_update_listener(&mut self){

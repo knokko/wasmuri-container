@@ -22,6 +22,12 @@ pub trait Container : std::fmt::Debug {
 
     fn on_mouse_scroll(&mut self, event: &MouseScrollEvent, manager: &ContainerManager) -> EventResult;
 
+    fn on_copy(&mut self) -> Option<ClipboardData>;
+
+    fn on_paste(&mut self, clipboard: &ClipboardData) -> bool;
+
+    fn on_cut(&mut self) -> Option<ClipboardData>;
+
     fn on_update(&mut self, manager: &ContainerManager) -> EventResult;
 
     fn render(&mut self, gl: &WebGlRenderingContext, manager: &ContainerManager) -> ContainerRenderResult;
