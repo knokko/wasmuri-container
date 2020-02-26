@@ -3,16 +3,18 @@ use crate::*;
 use std::cell::RefCell;
 use std::rc::Weak;
 
+use wasmuri_core::WeakVec;
+
 pub struct UpdateManager {
 
-    behaviors: Vec<Weak<RefCell<dyn ComponentBehavior>>>
+    behaviors: WeakVec<dyn ComponentBehavior>
 }
 
 impl UpdateManager {
 
     pub fn new() -> UpdateManager {
         UpdateManager {
-            behaviors: Vec::new()
+            behaviors: WeakVec::new()
         }
     }
 
@@ -21,13 +23,9 @@ impl UpdateManager {
     }
 
     pub fn fire_update(&mut self, manager: &ContainerManager){
-        self.behaviors.drain_filter(|handle| {
-            match handle.upgrade() {
-                Some(component_cell) => {
-                    component_cell.borrow_mut().update(&mut UpdateParams::new(manager));
-                    false
-                }, None => true
-            }
+        self.behaviors.for_each_mut(|behavior| {
+            behavior.update(&mut UpdateParams::new(manager));
+            false
         });
     }
 }
