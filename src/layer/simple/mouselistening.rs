@@ -3,7 +3,7 @@ use std::rc::Weak;
 
 use crate::*;
 
-use wasmuri_core::Region;
+use wasmuri_core::{Region,WeakVec};
 
 struct RegionHandle {
 
@@ -21,28 +21,24 @@ struct FullHandle {
 
 type AreaClickHandle = RegionHandle;
 
-type FullClickHandle = Weak<RefCell<dyn ComponentBehavior>>;
-
 type AreaScrollHandle = RegionHandle;
 
 type FullScrollHandle = FullHandle;
 
 type AreaMoveHandle = RegionHandle;
 
-type FullMoveHandle = Weak<RefCell<dyn ComponentBehavior>>;
-
 type InOutMoveHandle = RegionHandle;
 
 pub struct MouseManager {
 
     area_click_listeners: Vec<AreaClickHandle>,
-    full_click_listeners: Vec<FullClickHandle>,
+    full_click_listeners: WeakVec<dyn ComponentBehavior>,
 
     area_scroll_listeners: Vec<AreaScrollHandle>,
     full_scroll_listeners: Vec<FullScrollHandle>,
 
     area_move_listeners: Vec<AreaMoveHandle>,
-    full_move_listeners: Vec<FullMoveHandle>,
+    full_move_listeners: WeakVec<dyn ComponentBehavior>,
     in_out_move_listeners: Vec<InOutMoveHandle>
 }
 
@@ -51,13 +47,13 @@ impl MouseManager {
     pub fn new() -> MouseManager {
         MouseManager {
             area_click_listeners: Vec::new(),
-            full_click_listeners: Vec::new(),
+            full_click_listeners: WeakVec::new(),
 
             area_scroll_listeners: Vec::new(),
             full_scroll_listeners: Vec::new(),
 
             area_move_listeners: Vec::new(),
-            full_move_listeners: Vec::new(),
+            full_move_listeners: WeakVec::new(),
             in_out_move_listeners: Vec::new()
         }
     }
@@ -170,13 +166,9 @@ impl MouseManager {
             }
         });
 
-        self.full_move_listeners.drain_filter(|handle| {
-            match handle.upgrade() {
-                Some(component_cell) => {
-                    component_cell.borrow_mut().mouse_move(&mut MouseMoveParams::new(prev_mouse_pos, next_mouse_pos, manager));
-                    false
-                }, None => true
-            }
+        self.full_move_listeners.for_each_mut(|behavior| {
+            behavior.mouse_move(&mut MouseMoveParams::new(prev_mouse_pos, next_mouse_pos, manager));
+            false
         });
     }
 
@@ -195,13 +187,9 @@ impl MouseManager {
             }
         });
 
-        self.full_click_listeners.drain_filter(|handle| {
-            match handle.upgrade() {
-                Some(component_cell) => {
-                    component_cell.borrow_mut().mouse_click_anywhere(&mut MouseClickAnyParams::new(click, manager));
-                    false
-                }, None => true
-            }
+        self.full_click_listeners.for_each_mut(|behavior| {
+            behavior.mouse_click_anywhere(&mut MouseClickAnyParams::new(click, manager));
+            false
         });
     }
 
@@ -215,13 +203,9 @@ impl MouseManager {
             }
         });
 
-        self.full_click_listeners.drain_filter(|handle| {
-            match handle.upgrade() {
-                Some(component_cell) => {
-                    component_cell.borrow_mut().mouse_click_anywhere(&mut MouseClickOutParams::new(click, manager));
-                    false
-                }, None => true
-            }
+        self.full_click_listeners.for_each_mut(|behavior| {
+            behavior.mouse_click_anywhere(&mut MouseClickOutParams::new(click, manager));
+            false
         });
     }
 
