@@ -25,7 +25,6 @@ impl UpdateManager {
     pub fn fire_update(&mut self, manager: &ContainerManager){
         self.behaviors.for_each_mut(|behavior| {
             behavior.update(&mut UpdateParams::new(manager));
-            false
         });
     }
 }

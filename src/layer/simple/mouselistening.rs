@@ -12,8 +12,6 @@ struct FullHandle {
     priority: i8
 }
 
-type FullScrollHandle = FullHandle;
-
 pub struct MouseManager {
 
     area_click_listeners: WeakMetaVec<dyn ComponentBehavior, Region>,
@@ -119,18 +117,17 @@ impl MouseManager {
         self.in_out_move_listeners.for_each_mut(|behavior, region| {
             if Self::mouse_inside(*region, prev_mouse_pos) != Self::mouse_inside(*region, next_mouse_pos) {
                 behavior.mouse_move(&mut MouseMoveParams::new(prev_mouse_pos, next_mouse_pos, manager));
-            } false
+            }
         });
 
         self.area_move_listeners.for_each_mut(|behavior, region| {
             if Self::mouse_inside(*region, prev_mouse_pos) || Self::mouse_inside(*region, next_mouse_pos) {
                 behavior.mouse_move(&mut MouseMoveParams::new(prev_mouse_pos, next_mouse_pos, manager));
-            } false
+            }
         });
 
         self.full_move_listeners.for_each_mut(|behavior| {
             behavior.mouse_move(&mut MouseMoveParams::new(prev_mouse_pos, next_mouse_pos, manager));
-            false
         });
     }
 
@@ -140,24 +137,21 @@ impl MouseManager {
                 behavior.mouse_click_inside(&mut MouseClickParams::new(mouse_pos, click, manager));
             } else {
                 behavior.mouse_click_outside(&mut MouseClickOutParams::new(click, manager));
-            } false
+            }
         });
 
         self.full_click_listeners.for_each_mut(|behavior| {
             behavior.mouse_click_anywhere(&mut MouseClickAnyParams::new(click, manager));
-            false
         });
     }
 
     pub fn fire_mouse_click_outside(&mut self, manager: &ContainerManager, click: ClickInfo) {
         self.area_click_listeners.for_each_mut(|behavior, _region| {
             behavior.mouse_click_outside(&mut MouseClickOutParams::new(click, manager));
-            false
         });
 
         self.full_click_listeners.for_each_mut(|behavior| {
             behavior.mouse_click_anywhere(&mut MouseClickOutParams::new(click, manager));
-            false
         });
     }
 
@@ -169,7 +163,7 @@ impl MouseManager {
             self.area_scroll_listeners.for_each_mut(|behavior, region| {
                 if !consumed && region.is_float_inside(mouse_pos.unwrap()){
                     consumed = behavior.mouse_scroll(&mut MouseScrollParams::new(mouse_pos, delta, manager));
-                } false
+                }
             });
         }
 
