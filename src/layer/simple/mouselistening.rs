@@ -5,20 +5,13 @@ use crate::*;
 
 use wasmuri_core::*;
 
-struct FullHandle {
-
-    behavior: Weak<RefCell<dyn ComponentBehavior>>,
-
-    priority: i8
-}
-
 pub struct MouseManager {
 
     area_click_listeners: WeakMetaVec<dyn ComponentBehavior, Region>,
     full_click_listeners: WeakVec<dyn ComponentBehavior>,
 
     area_scroll_listeners: WeakMetaVec<dyn ComponentBehavior, Region>,
-    full_scroll_listeners: Vec<FullHandle>,
+    full_scroll_listeners: WeakMetaVec<dyn ComponentBehavior, i8>,
 
     area_move_listeners: WeakMetaVec<dyn ComponentBehavior, Region>,
     full_move_listeners: WeakVec<dyn ComponentBehavior>,
@@ -33,7 +26,7 @@ impl MouseManager {
             full_click_listeners: WeakVec::new(),
 
             area_scroll_listeners: WeakMetaVec::new(),
-            full_scroll_listeners: Vec::new(),
+            full_scroll_listeners: WeakMetaVec::new(),
 
             area_move_listeners: WeakMetaVec::new(),
             full_move_listeners: WeakVec::new(),
@@ -91,11 +84,11 @@ impl MouseManager {
         self.in_out_move_listeners.push(behavior, region);
     }
 
-    fn add_full_listener(list: &mut Vec<FullHandle>, behavior: Weak<RefCell<dyn ComponentBehavior>>, priority: i8){
-        let maybe_index = list.binary_search_by(|existing| {
+    fn add_full_listener(list: &mut WeakMetaVec<dyn ComponentBehavior, i8>, behavior: Weak<RefCell<dyn ComponentBehavior>>, priority: i8){
+        let maybe_index = list.vec.binary_search_by(|existing| {
 
             // Intentionally INVERT the order so that the higher priorities come first
-            priority.cmp(&existing.priority)
+            priority.cmp(&existing.metadata)
         });
 
         let index;
@@ -103,9 +96,9 @@ impl MouseManager {
             Ok(the_index) => index = the_index,
             Err(the_index) => index = the_index
         };
-        list.insert(index, FullHandle {
-            behavior,
-            priority
+        list.vec.insert(index, WeakMetaHandle {
+            weak_cell: behavior,
+            metadata: priority
         });
     }
 
@@ -168,14 +161,9 @@ impl MouseManager {
         }
 
         if !consumed {
-            self.full_scroll_listeners.drain_filter(|handle| {
-                match handle.behavior.upgrade() {
-                    Some(component_cell) => {
-                        if !consumed {
-                            consumed = component_cell.borrow_mut().mouse_scroll(&mut MouseScrollParams::new(mouse_pos, delta, manager));
-                        }
-                        false
-                    }, None => true
+            self.full_scroll_listeners.for_each_mut(|behavior, _prio| {
+                if !consumed {
+                    consumed = behavior.mouse_scroll(&mut MouseScrollParams::new(mouse_pos, delta, manager));
                 }
             });
         }
