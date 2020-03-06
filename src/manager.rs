@@ -155,10 +155,27 @@ impl ContainerManager {
         &self.canvas
     }
 
-    fn process_result(&mut self, result: EventResult){
-        match result {
+    fn process_result<F: FnMut(&mut dyn Container, &ContainerManager) -> EventResult>(&mut self, mut result_function: F) {
+
+        let maybe_new_container = match &self.current_container {
+            Some(container) => {
+                let mut borrow_container = container.borrow_mut();
+                result_function(&mut *borrow_container, self)
+            }, None => None
+        };
+
+        match maybe_new_container {
             Some(new_container) => self.set_container_cell(new_container),
             None => {}
+        };
+    }
+
+    fn with_container<F: FnMut(&mut dyn Container, &ContainerManager)>(&self, mut container_function: F) {
+        match &self.current_container {
+            Some(container) => {
+                let mut borrow_container = container.borrow_mut();
+                container_function(&mut *borrow_container, self);
+            }, None => {}
         };
     }
 
@@ -184,13 +201,9 @@ fn start_listen<T>(manager_cell: &Rc<RefCell<ContainerManager>>, handler: &Handl
 impl Listener<KeyDownEvent> for ContainerManager {
 
     fn process(&mut self, event: &KeyDownEvent){
-        self.process_result(match &self.current_container {
-            Some(current_container) => {
-
-                let mut claim_container = current_container.borrow_mut();
-                claim_container.on_key_down(&KeyInfo::new(event.key_event.key(), event.key_event.ctrl_key(), event.key_event.shift_key(), 
-                        event.key_event.alt_key(), event.key_event.meta_key()), self)
-            }, None => None
+        self.process_result(|container, manager| {
+            container.on_key_down(&KeyInfo::new(event.key_event.key(), event.key_event.ctrl_key(), event.key_event.shift_key(), 
+                    event.key_event.alt_key(), event.key_event.meta_key()), manager)
         });
     }
 }
@@ -198,13 +211,9 @@ impl Listener<KeyDownEvent> for ContainerManager {
 impl Listener<KeyUpEvent> for ContainerManager {
 
     fn process(&mut self, event: &KeyUpEvent){
-        self.process_result(match &self.current_container {
-            Some(current_container) => {
-
-                let mut claim_container = current_container.borrow_mut();
-                claim_container.on_key_up(&KeyInfo::new(event.key_event.key(), event.key_event.ctrl_key(), event.key_event.shift_key(), 
-                        event.key_event.alt_key(), event.key_event.meta_key()), self)
-            }, None => None
+        self.process_result(|container, manager| {
+            container.on_key_up(&KeyInfo::new(event.key_event.key(), event.key_event.ctrl_key(), event.key_event.shift_key(), 
+                        event.key_event.alt_key(), event.key_event.meta_key()), manager)
         });
     }
 }
@@ -212,13 +221,9 @@ impl Listener<KeyUpEvent> for ContainerManager {
 impl Listener<MouseClickEvent> for ContainerManager {
 
     fn process(&mut self, event: &MouseClickEvent){
-        self.process_result(match &self.current_container {
-            Some(current_container) => {
-
-                let mut claim_container = current_container.borrow_mut();
-                claim_container.on_mouse_click(ClickInfo::new(event.mouse_event.button(), event.mouse_event.ctrl_key(), 
-                        event.mouse_event.shift_key(), event.mouse_event.alt_key(), event.mouse_event.meta_key()), self)
-            }, None => None
+        self.process_result(|container, manager| {
+            container.on_mouse_click(ClickInfo::new(event.mouse_event.button(), event.mouse_event.ctrl_key(), 
+                        event.mouse_event.shift_key(), event.mouse_event.alt_key(), event.mouse_event.meta_key()), manager)
         });
     }
 }
@@ -226,40 +231,21 @@ impl Listener<MouseClickEvent> for ContainerManager {
 impl Listener<MouseMoveEvent> for ContainerManager {
 
     fn process(&mut self, event: &MouseMoveEvent){
-
-        self.process_result(match &self.current_container {
-            Some(current_container) => {
-
-                let mut claim_container = current_container.borrow_mut();
-                claim_container.on_mouse_move(event, self)
-            }, None => None
-        });
+        self.process_result(|container, manager| container.on_mouse_move(event, manager));
     }
 }
 
 impl Listener<MouseScrollEvent> for ContainerManager {
 
     fn process(&mut self, event: &MouseScrollEvent){
-        self.process_result(match &self.current_container {
-            Some(current_container) => {
-
-                let mut claim_container = current_container.borrow_mut();
-                claim_container.on_mouse_scroll(event, self)
-            }, None => None
-        });
+        self.process_result(|container, manager| container.on_mouse_scroll(event, manager));
     }
 }
 
 impl Listener<UpdateEvent> for ContainerManager {
 
     fn process(&mut self, _event: &UpdateEvent){
-        self.process_result(match &self.current_container {
-            Some(current_container) => {
-
-                let mut claim_container = current_container.borrow_mut();
-                claim_container.on_update(self)
-            }, None => None
-        });
+        self.process_result(|container, manager| container.on_update(manager));
     }
 }
 
@@ -275,12 +261,7 @@ impl Listener<ResizeEvent> for ContainerManager {
 
                 self.gl.viewport(0, 0, event.get_new_width() as i32, event.get_new_height() as i32);
 
-                match &self.current_container {
-                    Some(cell) => {
-                        let mut container = cell.borrow_mut();
-                        container.force_render();
-                    }, None => {}
-                };
+                self.with_container(|container, _manager| container.force_render());
             }
         };
     }
@@ -289,26 +270,27 @@ impl Listener<ResizeEvent> for ContainerManager {
 impl Listener<RenderEvent> for ContainerManager {
 
     fn process(&mut self, _event: &RenderEvent){
-        match &self.current_container {
-            Some(current_container) => {
 
-                let mut claim_container = current_container.borrow_mut();
-                let result = claim_container.render(&self.gl, self);
+        let mut change_cursor = false;
+        let mut result = None;
 
-                let change_cursor;
-                if self.prev_cursor.is_none() {
-                    change_cursor = true;
-                } else {
-                    let prev_cursor = self.prev_cursor.as_ref().unwrap();
-                    change_cursor = *prev_cursor != result;
-                }
+        self.with_container(|container, manager| {
+            let local_result = container.render(&manager.gl, manager);
+            
+            if manager.prev_cursor.is_none() {
+                change_cursor = true;
+            } else {
+                let prev_cursor = manager.prev_cursor.as_ref().unwrap();
+                change_cursor = *prev_cursor != local_result;
+            }
 
-                if change_cursor {
-                    let css = self.canvas.style();
-                    css.set_property("cursor", &result.to_css_value()).expect("Should be able to set cursor property");
-                    self.prev_cursor = Some(result);
-                }
-            }, None => {}
+            result = Some(local_result);
+        });
+
+        if change_cursor {
+            let css = self.canvas.style();
+            css.set_property("cursor", &result.as_ref().unwrap().to_css_value()).expect("Should be able to set cursor property");
+            self.prev_cursor = result;
         }
     }
 }
@@ -316,76 +298,64 @@ impl Listener<RenderEvent> for ContainerManager {
 impl Listener<CopyEvent> for ContainerManager {
 
     fn process(&mut self, event: &CopyEvent) {
-        match &self.current_container {
-            Some(current_container) => {
-
-                let mut claim_container = current_container.borrow_mut();
-                match event.clipboard_event.clipboard_data() {
-                    Some(clipboard) => {
-                        match claim_container.on_copy() {
-                            Some(to_copy) => {
-                                match to_copy {
-                                    ClipboardData::Text(the_text) => {
-                                         if clipboard.set_data("text", &the_text).is_err() {
-                                              print("Failed to copy data to clipboard during copy event");
-                                         }
-                                    }
-                                };
-                                event.clipboard_event.prevent_default();
-                            }, None => {}
-                        };
-                    }, None => print("No clipboard data on copy event?")
-                };
-            }, None => {}
-        }
+        self.with_container(|container, _manager| {
+            match event.clipboard_event.clipboard_data() {
+                Some(clipboard) => {
+                    match container.on_copy() {
+                        Some(to_copy) => {
+                            match to_copy {
+                                ClipboardData::Text(the_text) => {
+                                     if clipboard.set_data("text", &the_text).is_err() {
+                                          print("Failed to copy data to clipboard during copy event");
+                                     }
+                                }
+                            };
+                            event.clipboard_event.prevent_default();
+                        }, None => {}
+                    };
+                }, None => print("No clipboard data on copy event?")
+            };
+        });
     }
 }
 
 impl Listener<PasteEvent> for ContainerManager {
 
     fn process(&mut self, event: &PasteEvent) {
-        match &self.current_container {
-            Some(current_container) => {
-
-                let mut claim_container = current_container.borrow_mut();
-                match event.clipboard_event.clipboard_data() {
-                    Some(clipboard) => {
-                        match clipboard.get_data("text") {
-                            Ok(the_text) => {
-                                claim_container.on_paste(&ClipboardData::Text(the_text));
-                            }, Err(_) => { /* No text was pasted, but something else. */ }
-                        }
-                    }, None => print("No clipboard data on paste event?")
-                };
-            }, None => {}
-        }
+        self.with_container(|container, _manager| {
+            match event.clipboard_event.clipboard_data() {
+                Some(clipboard) => {
+                    match clipboard.get_data("text") {
+                        Ok(the_text) => {
+                            container.on_paste(&ClipboardData::Text(the_text));
+                        }, Err(_) => { /* No text was pasted, but something else. */ }
+                    }
+                }, None => print("No clipboard data on paste event?")
+            };
+        });
     }
 }
 
 impl Listener<CutEvent> for ContainerManager {
 
     fn process(&mut self, event: &CutEvent) {
-        match &self.current_container {
-            Some(current_container) => {
-
-                let mut claim_container = current_container.borrow_mut();
-                match event.clipboard_event.clipboard_data() {
-                    Some(clipboard) => {
-                        match claim_container.on_cut() {
-                            Some(to_cut) => {
-                                match to_cut {
-                                    ClipboardData::Text(the_text) => {
-                                         if clipboard.set_data("text", &the_text).is_err() {
-                                             print("Failed to copy data to clipboard during cut event");
-                                         }
-                                    }
-                                };
-                                event.clipboard_event.prevent_default();
-                            }, None => {}
-                        };
-                    }, None => print("No clipboard data on cut event?")
-                };
-            }, None => {}
-        }
+        self.with_container(|container, _manager| {
+            match event.clipboard_event.clipboard_data() {
+                Some(clipboard) => {
+                    match container.on_cut() {
+                        Some(to_cut) => {
+                            match to_cut {
+                                ClipboardData::Text(the_text) => {
+                                     if clipboard.set_data("text", &the_text).is_err() {
+                                         print("Failed to copy data to clipboard during cut event");
+                                     }
+                                }
+                            };
+                            event.clipboard_event.prevent_default();
+                        }, None => {}
+                    };
+                }, None => print("No clipboard data on cut event?")
+            };
+        });
     }
 }
