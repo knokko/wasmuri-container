@@ -17,8 +17,6 @@ pub use handle::*;
 pub use render::*;
 pub use simple::*;
 
-
-
 pub trait Layer {
 
     /// If the event is consumed, the remaining layers will get passed a new_pos of None
@@ -52,9 +50,15 @@ pub trait Layer {
     fn add_component(&mut self, component: Rc<RefCell<dyn Component>>);
 }
 
+pub enum RenderRequestError {
+
+    RegionAlreadyClaimed,
+    UnregisteredRenderPhase
+}
+
 pub trait LayerAgent {
 
-    fn claim_render_space(&mut self, region: Region, trigger: RenderTrigger, opacity: RenderOpacity, phase: RenderPhase) -> Result<(),()>;
+    fn claim_render_space(&mut self, region: Region, trigger: RenderTrigger, opacity: RenderOpacity, phase_id: &'static dyn RenderPhaseID) -> Result<(),RenderRequestError>;
 
     fn claim_key_down_space(&mut self, region: Region) -> Result<(),()>;
 

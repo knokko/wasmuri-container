@@ -13,7 +13,7 @@ struct RenderMeta {
 
     trigger: RenderTrigger,
     opacity: RenderOpacity,
-    phase: RenderPhase,
+    phase: Box<dyn RenderPhase>,
 
     prev_render_actions: Vec<PassedRenderAction>
 }
@@ -36,11 +36,16 @@ impl RenderManager {
         }
     }
 
-    /// Should only be called after can_claim confirms that the region can be claimed!
-    pub fn claim_space(&mut self, region: Region, trigger: RenderTrigger, phase: RenderPhase, opacity: RenderOpacity, behavior: Weak<RefCell<dyn ComponentBehavior>>) {
+    fn lookup_render_phase(&self, id: &dyn RenderPhaseID) -> Option<Box<dyn RenderPhase>> {
+        // Ehm... yes...
+    }
 
+    /// Should only be called after can_claim confirms that the region can be claimed and the render phase is known!
+    pub fn claim_space(&mut self, region: Region, trigger: RenderTrigger, phase_id: &dyn RenderPhaseID, opacity: RenderOpacity, behavior: Weak<RefCell<dyn ComponentBehavior>>) {
+
+        let phase = self.lookup_render_phase(phase_id).expect("Unregistered render phase");
         let maybe_index = self.render_components.vec.binary_search_by(|existing| {
-            existing.metadata.phase.cmp(&phase)
+            existing.metadata.phase.get_priority().cmp(&phase.get_priority())
         });
         let index;
         match maybe_index {
@@ -64,6 +69,10 @@ impl RenderManager {
         }
 
         return true;
+    }
+
+    pub fn knows_render_phase(&self, phase_id: &dyn RenderPhaseID) -> bool {
+        self.lookup_render_phase(phase_id).is_some()
     }
 
     pub fn predict_render(&mut self) -> Vec<PlannedRenderAction> {
@@ -104,6 +113,7 @@ impl RenderManager {
         let mut render_actions = Vec::new();
 
         // Draw the background if necessary
+        // TODO Use color filling for better composition
         if self.render_background && self.background_color.is_some() {
             let color = self.background_color.as_ref().unwrap();
             gl.clear_color(color.get_red_float(), color.get_green_float(), color.get_blue_float(), color.get_alpha_float());
@@ -117,6 +127,7 @@ impl RenderManager {
         let has_background = self.background_color.is_some();
 
         // If we have a background, then we will always render the entire viewport
+        // TODO Use color filling instead for better composition
         if has_background {
             render_actions.push(PassedRenderAction::new(Region::entire_viewport()));
         }
@@ -132,8 +143,6 @@ impl RenderManager {
             if requested_render {
 
                 if previous_render_phase != meta.phase {
-
-                    // TODO Handle render phase switching per container rather than per layer
 
                     // Currently, the Text phase is the only phase that has built-in support, other phases will have to prepare themselves
                     if meta.phase == RenderPhase::Text {

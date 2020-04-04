@@ -2,6 +2,8 @@ use crate::*;
 
 use wasmuri_core::Region;
 
+pub type RenderPriority = i8;
+
 #[derive(Clone,Copy)]
 pub enum RenderTrigger {
 
@@ -10,14 +12,6 @@ pub enum RenderTrigger {
     MouseMoveInside,
     MouseMove,
     Always
-}
-
-#[derive(PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
-pub enum RenderPhase {
-
-    Start,
-    Text,
-    End
 }
 
 #[derive(Clone,Copy,PartialEq,Eq,Debug)]

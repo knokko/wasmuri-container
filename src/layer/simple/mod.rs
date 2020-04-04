@@ -187,109 +187,87 @@ impl Layer for SimpleLayer {
         for behavior in &behaviors {
             let mut agent = SimpleLayerAgent::new(self);
             behavior.borrow_mut().attach(&mut agent);
+            let store = agent.store;
 
-            let render_handle = agent.render_handle;
+            for request in &store.render_requests {
+                self.render_manager.claim_space(request.region, request.trigger, request.phase_id, request.opacity, Rc::downgrade(&behavior));
+            }
 
-            let key_down_space = agent.key_down_space;
-            let key_up_space = agent.key_up_space;
-            let key_down_priority = agent.key_down_priority;
-            let key_up_priority = agent.key_up_priority;
-
-            let mouse_click_space = agent.mouse_click_space;
-            let mouse_click_global = agent.mouse_click_global;
-            let mouse_scroll_space = agent.mouse_scroll_space;
-            let mouse_scroll_priority = agent.mouse_scroll_priority;
-            let mouse_move_space = agent.mouse_move_space;
-            let mouse_move_in_out_space = agent.mouse_move_in_out_space;
-            let mouse_move_global = agent.mouse_move_global;
-
-            let copy_priority = agent.copy_priority;
-            let paste_priority = agent.paste_priority;
-            let cut_priority = agent.cut_priority;
-
-            let receive_updates = agent.receive_updates;
-
-            match render_handle {
-                Some(render_handle) => {
-                    self.render_manager.claim_space(render_handle.0, render_handle.1, render_handle.2, render_handle.3, Rc::downgrade(&behavior));
-                }, None => {}
-            };
-
-            match key_down_space {
+            match store.key_down_space {
                 Some(region) => {
                     self.key_manager.add_region_key_down_listener(Rc::downgrade(&behavior), region);
                 }, None => {}
             };
 
-            match key_up_space {
+            match store.key_up_space {
                 Some(region) => {
                     self.key_manager.add_region_key_up_listener(Rc::downgrade(&behavior), region);
                 }, None => {}
             };
 
-            match key_down_priority {
+            match store.key_down_priority {
                 Some(priority) => {
                     self.key_manager.add_global_key_down_listener(Rc::downgrade(&behavior), priority);
                 }, None => {}
             };
 
-            match key_up_priority {
+            match store.key_up_priority {
                 Some(priority) => {
                     self.key_manager.add_global_key_up_listener(Rc::downgrade(&behavior), priority);
                 }, None => {}
             };
 
-            match mouse_click_space {
+            match store.mouse_click_space {
                 Some(space) => {
                     self.mouse_manager.add_click_space_listener(Rc::downgrade(&behavior), space);
                 }, None => {}
             };
             
-            if mouse_click_global {
+            if store.mouse_click_global {
                 self.mouse_manager.add_full_click_listener(Rc::downgrade(&behavior));
             }
 
-            match mouse_scroll_space {
+            match store.mouse_scroll_space {
                 Some(space) => {
                     self.mouse_manager.add_scroll_space_listener(Rc::downgrade(&behavior), space);
                 }, None => {}
             };
 
-            match mouse_scroll_priority {
+            match store.mouse_scroll_priority {
                 Some(priority) => {
                     self.mouse_manager.add_full_scroll_listener(Rc::downgrade(&behavior), priority);
                 }, None => {}
             };
 
-            match mouse_move_space {
+            match store.mouse_move_space {
                 Some(space) => {
                     self.mouse_manager.add_move_space_listener(Rc::downgrade(&behavior), space);
                 }, None => {}
             };
 
-            match mouse_move_in_out_space {
+            match store.mouse_move_in_out_space {
                 Some(space) => {
                     self.mouse_manager.add_in_out_move_listener(Rc::downgrade(&behavior), space);
                 }, None => {}
             };
 
-            if copy_priority.is_some() {
-                self.clipboard_manager.add_copy_listener(Rc::downgrade(&behavior), copy_priority.unwrap());
+            if store.copy_priority.is_some() {
+                self.clipboard_manager.add_copy_listener(Rc::downgrade(&behavior), store.copy_priority.unwrap());
             }
 
-            if paste_priority.is_some() {
-                self.clipboard_manager.add_paste_listener(Rc::downgrade(&behavior), paste_priority.unwrap());
+            if store.paste_priority.is_some() {
+                self.clipboard_manager.add_paste_listener(Rc::downgrade(&behavior), store.paste_priority.unwrap());
             }
 
-            if cut_priority.is_some() {
-                self.clipboard_manager.add_cut_listener(Rc::downgrade(&behavior), cut_priority.unwrap());
+            if store.cut_priority.is_some() {
+                self.clipboard_manager.add_cut_listener(Rc::downgrade(&behavior), store.cut_priority.unwrap());
             }
 
-            if mouse_move_global {
+            if store.mouse_move_global {
                 self.mouse_manager.add_full_move_listener(Rc::downgrade(&behavior));
             }
 
-            if receive_updates {
+            if store.receive_updates {
                 self.update_manager.add_listener(Rc::downgrade(&behavior));
             }
         }
@@ -298,11 +276,17 @@ impl Layer for SimpleLayer {
     }
 }
 
-pub struct SimpleLayerAgent<'a> {
+struct RenderRequest {
 
-    layer: &'a SimpleLayer,
+    region: Region,
+    trigger: RenderTrigger,
+    phase_id: &'static dyn RenderPhaseID,
+    opacity: RenderOpacity
+}
 
-    render_handle: Option<(Region,RenderTrigger,RenderPhase,RenderOpacity)>,
+struct SimpleLayerAgentStore {
+
+    render_requests: Vec<RenderRequest>,
 
     key_down_space: Option<Region>,
     key_up_space: Option<Region>,
@@ -327,13 +311,11 @@ pub struct SimpleLayerAgent<'a> {
     receive_updates: bool
 }
 
-impl<'a> SimpleLayerAgent<'a> {
+impl SimpleLayerAgentStore {
 
-    fn new(layer: &'a SimpleLayer) -> SimpleLayerAgent {
-        SimpleLayerAgent {
-            layer,
-
-            render_handle: None,
+    fn new() -> Self {
+        Self {
+            render_requests: Vec::with_capacity(1),
 
             key_down_space: None,
             key_up_space: None,
@@ -360,15 +342,35 @@ impl<'a> SimpleLayerAgent<'a> {
     }
 }
 
+pub struct SimpleLayerAgent<'a> {
+
+    layer: &'a SimpleLayer,
+    store: SimpleLayerAgentStore
+}
+
+impl<'a> SimpleLayerAgent<'a> {
+
+    fn new(layer: &'a SimpleLayer) -> Self {
+        Self {
+            layer,
+            store: SimpleLayerAgentStore::new()
+        }
+    }
+}
+
 impl<'a> LayerAgent for SimpleLayerAgent<'a> {
 
-    fn claim_render_space(&mut self, region: Region, trigger: RenderTrigger, opacity: RenderOpacity, phase: RenderPhase) -> Result<(),()> {
+    fn claim_render_space(&mut self, region: Region, trigger: RenderTrigger, opacity: RenderOpacity, phase_id: &'static dyn RenderPhaseID) -> Result<(),RenderRequestError> {
 
         if !self.layer.render_manager.can_claim(region) {
-            return Err(());
+            return Err(RenderRequestError::RegionAlreadyClaimed);
         }
 
-        self.render_handle = Some((region, trigger, phase, opacity));
+        if !self.layer.render_manager.knows_render_phase(phase_id) {
+            return Err(RenderRequestError::UnregisteredRenderPhase);
+        }
+
+        self.store.render_requests.push(RenderRequest {region, trigger, phase_id, opacity});
         Ok(())
     }
 
@@ -378,7 +380,7 @@ impl<'a> LayerAgent for SimpleLayerAgent<'a> {
             return Err(());
         }
 
-        self.key_down_space = Some(region);
+        self.store.key_down_space = Some(region);
         Ok(())
     }
 
@@ -388,7 +390,7 @@ impl<'a> LayerAgent for SimpleLayerAgent<'a> {
             return Err(());
         }
 
-        self.key_up_space = Some(region);
+        self.store.key_up_space = Some(region);
         Ok(())
     }
 
@@ -397,22 +399,22 @@ impl<'a> LayerAgent for SimpleLayerAgent<'a> {
             return Err(());
         }
 
-        self.key_down_space = Some(region);
-        self.key_up_space = Some(region);
+        self.store.key_down_space = Some(region);
+        self.store.key_up_space = Some(region);
         Ok(())
     }
 
     fn make_key_down_listener(&mut self, priority: i8){
-        self.key_down_priority = Some(priority);
+        self.store.key_down_priority = Some(priority);
     }
 
     fn make_key_up_listener(&mut self, priority: i8){
-        self.key_up_priority = Some(priority);
+        self.store.key_up_priority = Some(priority);
     }
 
     fn make_key_listener(&mut self, priority: i8){
-        self.key_down_priority = Some(priority);
-        self.key_up_priority = Some(priority);
+        self.store.key_down_priority = Some(priority);
+        self.store.key_up_priority = Some(priority);
     }
 
     fn claim_mouse_click_space(&mut self, region: Region) -> Result<(),()> {
@@ -420,7 +422,7 @@ impl<'a> LayerAgent for SimpleLayerAgent<'a> {
             return Err(());
         }
 
-        self.mouse_click_space = Some(region);
+        self.store.mouse_click_space = Some(region);
         Ok(())
     }
 
@@ -429,43 +431,43 @@ impl<'a> LayerAgent for SimpleLayerAgent<'a> {
             return Err(());
         }
 
-        self.mouse_scroll_space = Some(region);
+        self.store.mouse_scroll_space = Some(region);
         Ok(())
     }
 
     fn make_mouse_scroll_listener(&mut self, priority: i8) {
-        self.mouse_scroll_priority = Some(priority);
+        self.store.mouse_scroll_priority = Some(priority);
     }
 
     fn claim_mouse_move_space(&mut self, region: Region){
-        self.mouse_move_space = Some(region);
+        self.store.mouse_move_space = Some(region);
     }
 
     fn claim_mouse_in_out_space(&mut self, region: Region){
-        self.mouse_move_in_out_space = Some(region);
+        self.store.mouse_move_in_out_space = Some(region);
     }
 
     fn make_mouse_move_listener(&mut self){
-        self.mouse_move_global = true;
+        self.store.mouse_move_global = true;
     }
 
     fn make_mouse_click_listener(&mut self){
-        self.mouse_click_global = true;
+        self.store.mouse_click_global = true;
     }
 
     fn make_copy_listener(&mut self, priority: i8) {
-        self.copy_priority = Some(priority);
+        self.store.copy_priority = Some(priority);
     }
 
     fn make_paste_listener(&mut self, priority: i8) {
-        self.paste_priority = Some(priority);
+        self.store.paste_priority = Some(priority);
     }
 
     fn make_cut_listener(&mut self, priority: i8) {
-        self.cut_priority = Some(priority);
+        self.store.cut_priority = Some(priority);
     }
 
     fn make_update_listener(&mut self){
-        self.receive_updates = true;
+        self.store.receive_updates = true;
     }
 }
